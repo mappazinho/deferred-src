@@ -1,12 +1,13 @@
 // Compatibility wrapper for Alien Swarm-derived client renderer sources.
-// Source SDK 2013 renamed precache_register.h to clienteffectprecachesystem.h.
+// Keep Source SDK 2013's native shared precache registration API available.
 
-#ifndef SDK2013_PRECACHE_REGISTER_COMPAT_H
-#define SDK2013_PRECACHE_REGISTER_COMPAT_H
+#ifndef SDK2013_CLIENT_PRECACHE_REGISTER_COMPAT_H
+#define SDK2013_CLIENT_PRECACHE_REGISTER_COMPAT_H
 #ifdef _WIN32
 #pragma once
 #endif
 
+#include "../shared/precache_register.h"
 #include "clienteffectprecachesystem.h"
 
-#endif // SDK2013_PRECACHE_REGISTER_COMPAT_H
+#endif // SDK2013_CLIENT_PRECACHE_REGISTER_COMPAT_H
