@@ -1,0 +1,23 @@
+name: Deferred Windows compile check
+
+on:
+  push:
+    branches:
+      - deferred-sdk2013-compat
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: microsoft/setup-msbuild@v2
+      - name: Generate Source SDK projects
+        working-directory: src
+        shell: cmd
+        run: call creategameprojects.bat
+      - name: Build game solution
+        working-directory: src
+        shell: cmd
+        run: msbuild games.sln /p:Configuration=Release /p:Platform=Win32 /m /v:minimal /nologo
