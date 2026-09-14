@@ -1,6 +1,7 @@
 # Files to ignore when considering what GIT should commit.
 
 # Visual Studio 
+*/.vs
 *.suo
 *.user
 *.sln.docstates
@@ -29,12 +30,29 @@ obj*/
 !utils/smdlexp/smdlexp.mak
 
 # Specific Source build products
+gameui2.dll
+gameui2.pdb
 client.pdb
 client.dll
 client.lib
 server.pdb
 server.dll
 server.lib
+game_shader_dx9.lib
+game_shader_dx9.dll
+*.dll.recipe
+*.lib.recipe
+game_shader_dx9.pdb
+game_shader_dx9_episodic.lib
+*.vpc.sentinel
+*.vcxproj.FileListAbsolute.txt
+game_shader_dx9_episodic.dll
+game_shader_dx9_episodic.pdb
+vc143.pdb
+vgui_controls.lib
+tier1.lib
+mathlib.lib
+raytrace.lib
 
 client.so
 client.so.dbg
@@ -53,4 +71,3 @@ config.cfg
 
 # shader files
 *.tmp
-
