@@ -66,7 +66,7 @@ private:
 		int seed, int cookie, int flags, int lighttype );
 #endif
 	void ReadEncodedDataInt( const int index,
-		ushort &seed, uint8 &cookie, uint8 &flags, uint8 &lighttype );
+		unsigned short &seed, uint8 &cookie, uint8 &flags, uint8 &lighttype );
 
 #ifdef CLIENT_DLL
 	int m_iSanityCounter;

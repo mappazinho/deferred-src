@@ -233,7 +233,7 @@ int CDeferredLightContainer::GetLightsAmount()
 }
 
 void CDeferredLightContainer::ReadEncodedDataInt( const int index,
-		ushort &seed, uint8 &cookie, uint8 &flags, uint8 &lighttype )
+		unsigned short &seed, uint8 &cookie, uint8 &flags, uint8 &lighttype )
 {
 	Assert( index >= 0 && index < GetLightsAmount() );
 

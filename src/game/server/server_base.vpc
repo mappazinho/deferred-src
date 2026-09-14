@@ -57,6 +57,7 @@ $Configuration
 		$PreprocessorDefinitions		"$BASE;fopen=dont_use_fopen" [$WINDOWS||$X360]
 		$Create/UsePrecompiledHeader	"Use Precompiled Header (/Yu)"
 		$Create/UsePCHThroughFile		"cbase.h"
+		$AdditionalOptions			"$BASE /FS"	[$WIN32]
 	}
 
 	$Linker
