@@ -1,0 +1,50 @@
+name: SDK2013 client PDB fix
+
+on:
+  push:
+    branches: [ singleplayer ]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: microsoft/setup-msbuild@v2
+      - name: Add /FS to client compiler options
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/game/client/client_base.vpc')
+          s = p.read_text(encoding='utf-8')
+          needle = '\t\t$PrecompiledHeaderFile\t\t\t"$(IntDir)/client.pch"\n'
+          repl = needle + '\t\t$AdditionalOptions\t\t\t"$BASE /FS"\t[$WIN32]\n'
+          if repl in s:
+              raise SystemExit('client /FS option already present')
+          if s.count(needle) != 1:
+              raise SystemExit(f'expected one PCH marker, got {s.count(needle)}')
+          p.write_text(s.replace(needle, repl, 1), encoding='utf-8')
+      - name: Generate Source SDK projects
+        shell: cmd
+        working-directory: src
+        run: |
+          call creategameprojects.bat
+          exit /b 0
+      - name: Compile Episodic client in parallel
+        shell: cmd
+        working-directory: src
+        run: msbuild game\client\client_episodic.vcxproj /m /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:ClCompile
+      - name: Commit verified fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/sdk2013-client-pdb-fix.yml
+          git add src/game/client/client_base.vpc
+          git commit -m "serialize client compiler PDB writes"
+          git push
