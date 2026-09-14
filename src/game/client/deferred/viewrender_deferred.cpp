@@ -744,7 +744,6 @@ void CDeferredViewRender::ViewDrawSceneDeferred( const CViewSetup &view, int nCl
 	CPostLightingView::PushDeferredShadingFrameBuffer();
 #endif
 
-	g_ShaderEditorSystem->UpdateSkymask( bDrew3dSkybox );
 
 	GetLightingManager()->RenderVolumetrics( view );
 
@@ -917,7 +916,6 @@ void CDeferredViewRender::DrawSkyboxComposite( const CViewSetup &view, const boo
 	if ( pSkyView->Setup( view, false, &nSkyboxVisible ) )
 	{
 		AddViewToScene( pSkyView );
-		g_ShaderEditorSystem->UpdateSkymask();
 	}
 
 	SafeRelease( pSkyView );
@@ -1573,8 +1571,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 	const CViewSetup &hudViewSetup = view;
 	m_UnderWaterOverlayMaterial.Shutdown();					// underwater view will set
 
-	ASSERT_LOCAL_PLAYER_RESOLVABLE();
-	int slot = GET_ACTIVE_SPLITSCREEN_SLOT();
 
 	CViewSetup worldView = view;
 
@@ -1622,9 +1618,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 		UpdateMaterialSystemTonemapScalar();
 
 		// clear happens here probably
-		SetupMain3DView( slot, worldView, hudViewSetup, nClearFlags, saveRenderTarget );
-
-		g_pClientShadowMgr->UpdateSplitscreenLocalPlayerShadowSkip();
+		SetupMain3DView( worldView, nClearFlags );
 
 		ProcessDeferredGlobals( worldView );
 		GetLightingManager()->LightSetup( worldView );
@@ -1772,7 +1766,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 			pRenderContext.SafeRelease();
 		}
 
-		g_ShaderEditorSystem->CustomPostRender();
 
 		// And here are the screen-space effects
 
@@ -1797,7 +1790,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 
 		CleanupMain3DView( worldView );
 
-		if ( m_FreezeParams[ slot ].m_bTakeFreezeFrame )
+		if ( m_rbTakeFreezeFrame[ STEREO_EYE_MONO ] )
 		{
 			pRenderContext = materials->GetRenderContext();
 			if ( IsX360() )
@@ -1810,7 +1803,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 				pRenderContext->CopyRenderTargetToTextureEx( GetFullscreenTexture(), 0, NULL, NULL );
 			}
 			pRenderContext.SafeRelease();
-			m_FreezeParams[ slot ].m_bTakeFreezeFrame = false;
+			m_rbTakeFreezeFrame[ STEREO_EYE_MONO ] = false;
 		}
 
 		pRenderContext = materials->GetRenderContext();
@@ -1833,7 +1826,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 	}
 
 	// Clear a row of pixels at the edge of the viewport if it isn't at the edge of the screen
-	if ( VGui_IsSplitScreen() )
+	if ( false )
 	{
 		CMatRenderContextPtr pRenderContext( materials );
 		pRenderContext->PushRenderTargetAndViewport();
@@ -1899,7 +1892,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 
 			// This block is suspect - why are we resizing fullscreen panels to be the size of the hudViewSetup
 			// which is potentially only half the screen
-			if ( GET_ACTIVE_SPLITSCREEN_SLOT() == 0 )
+			if ( true )
 			{
 				vecHudPanels.AddToTail( VGui_GetFullscreenRootVPANEL() );
 
@@ -2332,11 +2325,8 @@ static inline void DrawRenderable( IClientRenderable *pEnt, int flags, const Ren
 //-----------------------------------------------------------------------------
 static inline void DrawOpaqueRenderable( IClientRenderable *pEnt, bool bTwoPass, bool bNoDecals )
 {
-	ASSERT_LOCAL_PLAYER_RESOLVABLE();
 	float color[3];
 
-	Assert( !IsSplitScreenSupported() || pEnt->ShouldDrawForSplitScreenUser( GET_ACTIVE_SPLITSCREEN_SLOT() ) );
-	Assert( (pEnt->GetIClientUnknown() == NULL) || (pEnt->GetIClientUnknown()->GetIClientEntity() == NULL) || (pEnt->GetIClientUnknown()->GetIClientEntity()->IsBlurred() == false) );
 	pEnt->GetColorModulation( color );
 	render->SetColorModulation(	color );
 
@@ -2385,8 +2375,6 @@ static void DrawOpaqueRenderables_DrawStaticProps( int nCount, CClientRenderable
 	
 	const int MAX_STATICS_PER_BATCH = 512;
 	IClientRenderable *pStatics[ MAX_STATICS_PER_BATCH ];
-	RenderableInstance_t pInstances[ MAX_STATICS_PER_BATCH ];
-	
 	int numScheduled = 0, numAvailable = MAX_STATICS_PER_BATCH;
 
 	for( int i = 0; i < nCount; ++i )
@@ -2397,18 +2385,17 @@ static void DrawOpaqueRenderables_DrawStaticProps( int nCount, CClientRenderable
 		else
 			continue;
 
-		pInstances[ numScheduled ] = itEntity->m_InstanceData;
 		pStatics[ numScheduled ++ ] = itEntity->m_pRenderable;
 		if ( -- numAvailable > 0 )
 			continue; // place a hint for compiler to predict more common case in the loop
 		
-		staticpropmgr->DrawStaticProps( pStatics, pInstances, numScheduled, false, vcollide_wireframe.GetBool() );
+		staticpropmgr->DrawStaticProps( pStatics, numScheduled, DEPTH_MODE_NORMAL, vcollide_wireframe.GetBool() );
 		numScheduled = 0;
 		numAvailable = MAX_STATICS_PER_BATCH;
 	}
 	
 	if ( numScheduled )
-		staticpropmgr->DrawStaticProps( pStatics, pInstances, numScheduled, false, vcollide_wireframe.GetBool() );
+		staticpropmgr->DrawStaticProps( pStatics, numScheduled, DEPTH_MODE_NORMAL, vcollide_wireframe.GetBool() );
 }
 
 static void DrawOpaqueRenderables_Range( int nCount, CClientRenderablesList::CEntry **ppEntities, bool bNoDecals )
@@ -2423,27 +2410,13 @@ static void DrawOpaqueRenderables_Range( int nCount, CClientRenderablesList::CEn
 	}
 }
 
-extern ConVar cl_modelfastpath;
-extern ConVar cl_skipslowpath;
-extern ConVar r_drawothermodels;
-static void	DrawOpaqueRenderables_ModelRenderables( int nCount, ModelRenderSystemData_t* pModelRenderables )
-{
-	g_pModelRenderSystem->DrawModels( pModelRenderables, nCount, MODEL_RENDER_MODE_NORMAL );
-}
-
-static void	DrawOpaqueRenderables_NPCs( int nCount, CClientRenderablesList::CEntry **ppEntities, bool bNoDecals )
-{
-	DrawOpaqueRenderables_Range( nCount, ppEntities, bNoDecals );
-}
 
 //-----------------------------------------------------------------------------
 // Renders all translucent entities in the render list
 //-----------------------------------------------------------------------------
 static inline void DrawTranslucentRenderable( IClientRenderable *pEnt, const RenderableInstance_t &instance, bool twoPass )
 {
-	ASSERT_LOCAL_PLAYER_RESOLVABLE();
 
-	Assert( !IsSplitScreenSupported() || pEnt->ShouldDrawForSplitScreenUser( GET_ACTIVE_SPLITSCREEN_SLOT() ) );
 
 	// Renderable list building should already have caught this
 	Assert( instance.m_nAlpha > 0 );
@@ -2472,145 +2445,47 @@ void CBaseWorldViewDeferred::DrawWorldDeferred( float waterZAdjust )
 
 void CBaseWorldViewDeferred::DrawOpaqueRenderablesDeferred( bool bNoDecals )
 {
-	VPROF("CViewRender::DrawOpaqueRenderables" );
+	VPROF( "CViewRender::DrawOpaqueRenderables" );
 
-	if( !r_drawopaquerenderables.GetBool() )
-		return;
-
-	if( !m_pMainView->ShouldDrawEntities() )
+	if ( !r_drawopaquerenderables.GetBool() || !m_pMainView->ShouldDrawEntities() )
 		return;
 
 	render->SetBlend( 1 );
-
-	//
-	// Prepare to iterate over all leaves that were visible, and draw opaque things in them.	
-	//
 	RopeManager()->ResetRenderCache();
 	g_pParticleSystemMgr->ResetRenderCache();
 
-	// Categorize models by type
-	int nOpaqueRenderableCount = m_pRenderablesList->m_RenderGroupCounts[RENDER_GROUP_OPAQUE];
-	CUtlVector< CClientRenderablesList::CEntry* > brushModels( (CClientRenderablesList::CEntry **)stackalloc( nOpaqueRenderableCount * sizeof( CClientRenderablesList::CEntry* ) ), nOpaqueRenderableCount );
-	CUtlVector< CClientRenderablesList::CEntry* > staticProps( (CClientRenderablesList::CEntry **)stackalloc( nOpaqueRenderableCount * sizeof( CClientRenderablesList::CEntry* ) ), nOpaqueRenderableCount );
-	CUtlVector< CClientRenderablesList::CEntry* > otherRenderables( (CClientRenderablesList::CEntry **)stackalloc( nOpaqueRenderableCount * sizeof( CClientRenderablesList::CEntry* ) ), nOpaqueRenderableCount );
+	const int nOpaqueRenderableCount = m_pRenderablesList->m_RenderGroupCounts[RENDER_GROUP_OPAQUE];
+	CUtlVector< CClientRenderablesList::CEntry* > brushModels;
+	CUtlVector< CClientRenderablesList::CEntry* > staticProps;
+	CUtlVector< CClientRenderablesList::CEntry* > otherRenderables;
+	brushModels.EnsureCapacity( nOpaqueRenderableCount );
+	staticProps.EnsureCapacity( nOpaqueRenderableCount );
+	otherRenderables.EnsureCapacity( nOpaqueRenderableCount );
+
 	CClientRenderablesList::CEntry *pOpaqueList = m_pRenderablesList->m_RenderGroups[RENDER_GROUP_OPAQUE];
 	for ( int i = 0; i < nOpaqueRenderableCount; ++i )
 	{
-		switch( pOpaqueList[i].m_nModelType )
+		switch ( pOpaqueList[i].m_nModelType )
 		{
-		case RENDERABLE_MODEL_BRUSH:		brushModels.AddToTail( &pOpaqueList[i] ); break; 
-		case RENDERABLE_MODEL_STATIC_PROP:	staticProps.AddToTail( &pOpaqueList[i] ); break; 
-		default:							otherRenderables.AddToTail( &pOpaqueList[i] ); break; 
+		case RENDERABLE_MODEL_BRUSH:
+			brushModels.AddToTail( &pOpaqueList[i] );
+			break;
+		case RENDERABLE_MODEL_STATIC_PROP:
+			staticProps.AddToTail( &pOpaqueList[i] );
+			break;
+		default:
+			otherRenderables.AddToTail( &pOpaqueList[i] );
+			break;
 		}
 	}
 
-	//
-	// First do the brush models
-	//
 	DrawOpaqueRenderables_DrawBrushModels( brushModels.Count(), brushModels.Base(), bNoDecals );
-
-	// Move all static props to modelrendersystem
-	bool bUseFastPath = ( cl_modelfastpath.GetInt() != 0 );
-
-	//
-	// Sort everything that's not a static prop
-	//
-	int nStaticPropCount = staticProps.Count();
-	int numOpaqueEnts = otherRenderables.Count();
-	CUtlVector< CClientRenderablesList::CEntry* > arrRenderEntsNpcsFirst( (CClientRenderablesList::CEntry **)stackalloc( numOpaqueEnts * sizeof( CClientRenderablesList::CEntry ) ), numOpaqueEnts );
-	CUtlVector< ModelRenderSystemData_t > arrModelRenderables( (ModelRenderSystemData_t *)stackalloc( ( numOpaqueEnts + nStaticPropCount ) * sizeof( ModelRenderSystemData_t ) ), numOpaqueEnts + nStaticPropCount );
-
-	// Queue up RENDER_GROUP_OPAQUE_ENTITY entities to be rendered later.
-	CClientRenderablesList::CEntry *itEntity;
-	if( r_drawothermodels.GetBool() )
-	{
-		for ( int i = 0; i < numOpaqueEnts; ++i )
-		{
-			itEntity = otherRenderables[i];
-			if ( !itEntity->m_pRenderable )
-				continue;
-
-			IClientUnknown *pUnknown = itEntity->m_pRenderable->GetIClientUnknown();
-			IClientModelRenderable *pModelRenderable = pUnknown->GetClientModelRenderable();
-			C_BaseEntity *pEntity = pUnknown->GetBaseEntity();
-
-			// FIXME: Strangely, some static props are in the non-static prop bucket
-			// which is what the last case in this if statement is for
-			if ( bUseFastPath && pModelRenderable )
-			{
-				ModelRenderSystemData_t data;
-				data.m_pRenderable = itEntity->m_pRenderable;
-				data.m_pModelRenderable = pModelRenderable;
-				data.m_InstanceData = itEntity->m_InstanceData;
-				arrModelRenderables.AddToTail( data );
-				otherRenderables.FastRemove( i );
-				--i; --numOpaqueEnts;
-				continue;
-			}
-
-			if ( !pEntity )
-				continue;
-
-			if ( pEntity->IsNPC() )
-			{
-				arrRenderEntsNpcsFirst.AddToTail( itEntity );
-				otherRenderables.FastRemove( i );
-				--i; --numOpaqueEnts;
-				continue;
-			}
-		}
-	}
-
-	// Queue up the static props to be rendered later.
-	for ( int i = 0; i < nStaticPropCount; ++i )
-	{
-		itEntity = staticProps[i];
-		if ( !itEntity->m_pRenderable )
-			continue;
-
-		IClientUnknown *pUnknown = itEntity->m_pRenderable->GetIClientUnknown();
-		IClientModelRenderable *pModelRenderable = pUnknown->GetClientModelRenderable();
-		if ( !bUseFastPath || !pModelRenderable )
-			continue;
-
-		ModelRenderSystemData_t data;
-		data.m_pRenderable = itEntity->m_pRenderable;
-		data.m_pModelRenderable = pModelRenderable;
-		data.m_InstanceData = itEntity->m_InstanceData;
-		arrModelRenderables.AddToTail( data );
-
-		staticProps.FastRemove( i );
-		--i; --nStaticPropCount;
-	}
-
-	//
-	// Draw model renderables now (ie. models that use the fast path)
-	//					 
-	DrawOpaqueRenderables_ModelRenderables( arrModelRenderables.Count(), arrModelRenderables.Base() );
-
-	// Turn off z pass here. Don't want non-fastpath models with potentially large dynamic VB requirements overwrite
-	// stuff in the dynamic VB ringbuffer. We're calling End360ZPass again in DrawExecute, but that's not a problem.
-	// Begin360ZPass/End360ZPass don't have to be matched exactly.
-	End360ZPass();
-
-	//
-	// Draw static props + opaque entities that aren't using the fast path.
-	//
 	DrawOpaqueRenderables_Range( otherRenderables.Count(), otherRenderables.Base(), bNoDecals );
 	DrawOpaqueRenderables_DrawStaticProps( staticProps.Count(), staticProps.Base() );
 
-	//
-	// Draw NPCs now
-	//
-	DrawOpaqueRenderables_NPCs( arrRenderEntsNpcsFirst.Count(), arrRenderEntsNpcsFirst.Base(), bNoDecals );
-
-	//
-	// Ropes and particles
-	//
 	RopeManager()->DrawRenderCache( false );
 	g_pParticleSystemMgr->DrawRenderCache( false );
 }
-
 
 
 static ConVar r_unlimitedrefract( "r_unlimitedrefract", "0" );
