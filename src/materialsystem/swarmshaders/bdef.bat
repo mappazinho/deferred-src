@@ -1,64 +1,55 @@
 @echo off
 setlocal
 
-rem Use dynamic shaders to build .inc files only
-rem set dynamic_shaders=0
-rem == Setup path to nmake.exe, from vc 2005 common tools directory ==
-call "%VS100COMNTOOLS%vsvars32.bat"
+rem Build Biohazard deferred shaders for this SDK 2013 checkout.
+rem Run from a Visual Studio Developer Command Prompt so nmake.exe is available.
 
-rem ================================
-rem ==== MOD PATH CONFIGURATIONS ===
+pushd "%~dp0"
 
-rem == Set the absolute path to your mod's game directory here ==
-rem == Note that this path needs does not support long file/directory names ==
-rem == So instead of a path such as "C:\Program Files\Steam\steamapps\mymod" ==
-rem == you need to find the 8.3 abbreviation for the directory name using 'dir /x' ==
-rem == and set the directory to something like C:\PROGRA~2\Steam\steamapps\sourcemods\mymod ==
-set GAMEDIR=E:\STEAMA~1\SOURCE~1\shelter
+for %%I in ("%~dp0..\..\..") do set "REPOROOT=%%~fI"
+set "GAMEDIR=%REPOROOT%\game\mod_episodic"
+set "SOURCEDIR=%REPOROOT%\src"
 
-rem == Set the relative path to SourceSDK\bin\orangebox\bin ==
-rem == As above, this path does not support long directory names or spaces ==
-rem == e.g. ..\..\..\..\..\PROGRA~2\Steam\steamapps\<USER NAME>\sourcesdk\bin\orangebox\bin ==
-set SDKBINDIR=..\..\..\..\..\..\STEAMA~1\common\ALIENS~1\bin
-
-rem ==  Set the Path to your mods root source code ==
-rem this should already be correct, accepts relative paths only!
-set SOURCEDIR=..\..
-
-rem ==== MOD PATH CONFIGURATIONS END ===
-rem ====================================
-
-
-
-
-
-set TTEXE=..\..\devtools\bin\timeprecise.exe
-if not exist %TTEXE% goto no_ttexe
-goto no_ttexe_end
-
-:no_ttexe
-set TTEXE=time /t
-:no_ttexe_end
-
-
-rem echo.
-rem echo ~~~~~~ buildsdkshaders %* ~~~~~~
-%TTEXE% -cur-Q
-set tt_all_start=%ERRORLEVEL%
-set tt_all_chkpt=%tt_start%
-
-set BUILD_SHADER=call buildshaders.bat
-set ARG_EXTRA=
-
-%BUILD_SHADER% deferred_shaders -game %GAMEDIR% -source %SOURCEDIR% -dx9_30 -force30
-
-
-rem echo.
-if not "%dynamic_shaders%" == "1" (
-  rem echo Finished full buildallshaders %*
-) else (
-  rem echo Finished dynamic buildallshaders %*
+rem SDKBINDIR may be supplied by the caller. If it is not, try the normal
+rem Source SDK Base 2013 Singleplayer install under Steam's primary library.
+if not defined SDKBINDIR (
+	for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Valve\Steam" /v SteamPath 2^>nul ^| find /i "SteamPath"') do set "STEAMPATH=%%B"
+	if defined STEAMPATH set "SDKBINDIR=%STEAMPATH%\steamapps\common\Source SDK Base 2013 Singleplayer\bin"
 )
 
-rem %TTEXE% -diff %tt_all_start% -cur
-rem echo.
+if not exist "%GAMEDIR%\gameinfo.txt" (
+	echo ERROR: Could not find the mod game directory:
+	echo        "%GAMEDIR%"
+	popd
+	exit /b 1
+)
+
+if not defined SDKBINDIR goto no_sdk_bin
+if not exist "%SDKBINDIR%\shadercompile.exe" goto no_sdk_bin
+
+where nmake.exe >nul 2>nul
+if errorlevel 1 (
+	echo ERROR: nmake.exe is not on PATH.
+	echo Run this script from a Visual Studio Developer Command Prompt.
+	popd
+	exit /b 1
+)
+
+rem buildshaders.bat has legacy assumptions about spaces in SDKBINDIR, so use
+rem the short form when Windows provides one.
+for %%I in ("%SDKBINDIR%") do set "SDKBINDIR=%%~sI"
+
+set "BUILD_SHADER=call buildshaders.bat"
+%BUILD_SHADER% deferred_shaders -game "%GAMEDIR%" -source "%SOURCEDIR%" -dx9_30 -force30
+set "BUILD_RESULT=%ERRORLEVEL%"
+
+popd
+exit /b %BUILD_RESULT%
+
+:no_sdk_bin
+echo ERROR: shadercompile.exe was not found.
+echo Set SDKBINDIR to the bin directory that contains shadercompile.exe, for example:
+echo   set "SDKBINDIR=C:\Program Files (x86)\Steam\steamapps\common\Source SDK Base 2013 Singleplayer\bin"
+echo Then run bdef.bat again.
+popd
+exit /b 1
