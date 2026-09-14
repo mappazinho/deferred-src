@@ -155,7 +155,7 @@ PS_OUTPUT main( const PS_INPUT In )
 		float iNumSamples = VOLUMQUALITY_SPOT_SAMPLES_LOD4;
 #	endif
 #elif DEFCFG_CONFIGURABLE_VOLUMETRIC_LOD
-	float iNumSamples = VOLUME_SAMPLES;
+	float iNumSamples = max( (float)VOLUME_SAMPLES, 1.0f );
 #else
 	float iNumSamples = VOLUMQUALITY_POINT_SAMPLES;
 #endif
