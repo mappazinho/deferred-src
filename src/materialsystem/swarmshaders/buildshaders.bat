@@ -70,14 +70,14 @@ REM MOD ARGS - look for -game or the vproject environment variable
 REM ****************
 :set_mod_args
 
-if not exist %SDKBINDIR%\shadercompile.exe goto NoShaderCompile
-set ChangeToDir=%SDKBINDIR%
+if not exist "%SDKBINDIR%\shadercompile.exe" goto NoShaderCompile
+set "ChangeToDir=%SDKBINDIR%"
 
 if /i "%4" NEQ "-source" goto NoSourceDirSpecified
-set SrcDirBase=%~5
+set "SrcDirBase=%~5"
 
 REM ** use the -game parameter to tell us where to put the files
-set targetdir=%~3\shaders
+set "targetdir=%~3\shaders"
 set SDKArgs=-nompi -nop4 -game "%~3"
 
 if not exist "%~3\gameinfo.txt" goto InvalidGameDirectory
@@ -100,7 +100,13 @@ goto end
 
 :NoShaderCompile
 echo -
-echo - ERROR: shadercompile.exe doesn't exist in %SDKBINDIR%
+echo - ERROR: shadercompile.exe doesn't exist in "%SDKBINDIR%"
+echo -
+goto end
+
+:MakefileGenerationFailed
+echo -
+echo - ERROR: Failed to generate makefile.%inputbase%.
 echo -
 goto end
 
@@ -114,10 +120,10 @@ rem echo %inputbase%
 rem echo --------------------------------
 REM make sure that target dirs exist
 REM files will be built in these targets and copied to their final destination
-if not exist %shaderDir% mkdir %shaderDir%
-if not exist %shaderDir%\fxc mkdir %shaderDir%\fxc
-if not exist %shaderDir%\vsh mkdir %shaderDir%\vsh
-if not exist %shaderDir%\psh mkdir %shaderDir%\psh
+if not exist "%shaderDir%" mkdir "%shaderDir%"
+if not exist "%shaderDir%\fxc" mkdir "%shaderDir%\fxc"
+if not exist "%shaderDir%\vsh" mkdir "%shaderDir%\vsh"
+if not exist "%shaderDir%\psh" mkdir "%shaderDir%\psh"
 REM Nuke some files that we will add to later.
 if exist filelist.txt del /f /q filelist.txt
 if exist filestocopy.txt del /f /q filestocopy.txt
@@ -129,6 +135,8 @@ REM ****************
 REM Generate a makefile for the shader project
 REM ****************
 perl "%SrcDirBase%\devtools\bin\updateshaders.pl" -source "%SrcDirBase%" %inputbase%
+if errorlevel 1 goto MakefileGenerationFailed
+if not exist "makefile.%inputbase%" goto MakefileGenerationFailed
 
 
 REM ****************
@@ -143,7 +151,7 @@ REM Copy the inc files to their target
 REM ****************
 if exist "inclist.txt" (
 	echo Publishing shader inc files to target...
-	perl %SrcDirBase%\devtools\bin\copyshaderincfiles.pl inclist.txt
+	perl "%SrcDirBase%\devtools\bin\copyshaderincfiles.pl" inclist.txt
 )
 
 REM ****************
@@ -164,7 +172,7 @@ echo %SDKBINDIR%\vstdlib.dll >> filestocopy.txt
 echo %SDKBINDIR%\tier0.dll >> filestocopy.txt
 
 REM ****************
-REM Cull duplicate entries in work/build list
+REM Cull duplicate entries in work/build list.
 REM ****************
 if exist filestocopy.txt type filestocopy.txt | perl "%SrcDirBase%\devtools\bin\uniqifylist.pl" > uniquefilestocopy.txt
 if exist filelistgen.txt if not "%dynamic_shaders%" == "1" (
@@ -176,13 +184,13 @@ REM ****************
 REM Execute distributed process on work/build list
 REM ****************
 
-set shader_path_cd=%cd%
+set "shader_path_cd=%cd%"
 if exist "filelist.txt" if exist "uniquefilestocopy.txt" if not "%dynamic_shaders%" == "1" (
 	echo Running distributed shader compilation...
 
-	cd /D %ChangeToDir%
+	cd /D "%ChangeToDir%"
 	%shadercompilecommand% %SDKArgs% -shaderpath "%shader_path_cd:/=\%" -allowdebug
-	cd /D %shader_path_cd%
+	cd /D "%shader_path_cd%"
 )
 
 REM ****************
@@ -193,7 +201,7 @@ REM ****************
 :DoXCopy
 if not "%dynamic_shaders%" == "1" (
 if not exist "%targetdir%" md "%targetdir%"
-if not "%targetdir%"=="%shaderDir%" xcopy %shaderDir%\*.* "%targetdir%" /e /y
+if not "%targetdir%"=="%shaderDir%" xcopy "%shaderDir%\*.*" "%targetdir%" /e /y
 )
 goto end
 
@@ -205,4 +213,3 @@ REM ****************
 
 %TTEXE% -diff %tt_start%
 echo.
-
