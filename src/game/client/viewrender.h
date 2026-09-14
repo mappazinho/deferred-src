@@ -317,6 +317,10 @@ public:
 
 	void			AddViewToScene( CRendering3dView *pView ) { m_SimpleExecutor.AddView( pView ); }
 protected:
+	bool m_HasPrevViewSetup;
+	CViewSetup m_PrevViewSetup;
+	void			GetSmoothedView( const CViewSetup &view, CViewSetup &pSmoothedView );
+
 	// Sets up the view parameters for all views (left, middle and right eyes).
     void            SetUpViews();
 
@@ -360,7 +364,7 @@ public:
 
 	// Render functions
 	virtual	void	Render( vrect_t *rect );
-	virtual void	RenderView( const CViewSetup &view, int nClearFlags, int whatToDraw );
+	virtual void	RenderView( const CViewSetup &tmpview, int nClearFlags, int whatToDraw );
 	virtual void	RenderPlayerSprites();
 	virtual void	Render2DEffectsPreHUD( const CViewSetup &view );
 	virtual void	Render2DEffectsPostHUD( const CViewSetup &view );

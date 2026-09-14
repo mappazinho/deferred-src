@@ -4742,7 +4742,11 @@ C_BaseEntity *C_BaseEntity::Instance( int iEnt )
 
 #ifdef WIN32
 #pragma warning( push )
+#if _MSC_VER >= 1900 // VS2022
+#include <typeinfo>
+#else
 #include <typeinfo.h>
+#endif
 #pragma warning( pop )
 #endif
 

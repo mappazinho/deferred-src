@@ -1,0 +1,6 @@
+"BlurFilterY"
+{
+	"$bloomamount" "1"
+	"$basetexture" "_rt_GameUI2BG_Temp"
+	"$ignorez" 1
+}

@@ -25,6 +25,10 @@ $Project "Client (HL2)"
 	$Folder	"Source Files"
 	{
 		$File	"hud_chat.cpp"
+		$File	"loadingscreens/ILoadingBackground.cpp"
+		$File	"loadingscreens/ILoadingBackground.h"
+		$File	"gameui2rendertargets.cpp"
+		$File	"gameui2rendertargets.h"
 		$File	"c_team_objectiveresource.cpp"
 		$File	"c_team_objectiveresource.h"
 

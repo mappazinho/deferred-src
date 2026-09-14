@@ -229,6 +229,34 @@ void CBasePlayer::ItemPostFrame()
 {
 	VPROF( "CBasePlayer::ItemPostFrame" );
 
+	// BUG: stops soundscapes and other playing sounds, using implementation in c_basehlplayer.cpp instead
+/*	// menu music
+
+#ifndef CLIENT_DLL
+
+	// precache music
+	enginesound->PrecacheSound("music/df_01test.mp3", true);
+	static bool playMusic = false;
+
+	if (engine->IsPaused())
+	{
+		if (!playMusic)
+		{
+			engine->ClientCommand(edict(), "play music/df_01test.mp3");
+			playMusic = true;
+		}
+	}
+	else // stop music
+	{
+		if (playMusic)
+			engine->ClientCommand(edict(), "stopsound");
+
+		playMusic = false;
+	}
+	
+#endif
+*/
+
 	// Put viewmodels into basically correct place based on new player origin
 	CalcViewModelView( EyePosition(), EyeAngles() );
 

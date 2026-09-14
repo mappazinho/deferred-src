@@ -77,6 +77,9 @@
 // Projective textures
 #include "C_Env_Projected_Texture.h"
 
+#if defined(GAMEUI2)
+#include "igameui2.h"
+#endif // GAMEUI2
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -935,11 +938,12 @@ CViewRender::CViewRender()
 	m_BaseDrawFlags = 0;
 	m_pActiveRenderer = NULL;
 	m_pCurrentlyDrawingEntity = NULL;
+	m_HasPrevViewSetup = false;
 }
 
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 // Output : Returns true on success, false on failure.
 //-----------------------------------------------------------------------------
 inline bool CViewRender::ShouldDrawEntities( void )
@@ -1902,6 +1906,69 @@ void CViewRender::FreezeFrame( float flFreezeTime )
 
 const char *COM_GetModDirectory();
 
+ConVar r_camera_cinematic("r_camera_cinematic", "1", FCVAR_CLIENTDLL);
+ConVar r_camera_cinematic_lag_origin("r_camera_cinematic_lag_origin", "0", FCVAR_CLIENTDLL);
+ConVar r_camera_cinematic_lag_origin_amount("r_camera_cinematic_lag_origin_amount", "0.025", FCVAR_CLIENTDLL);
+ConVar r_camera_cinematic_lag_angles("r_camera_cinematic_lag_angles", "1", FCVAR_CLIENTDLL);
+ConVar r_camera_cinematic_lag_angles_amount("r_camera_cinematic_lag_angles_amount", "0.05", FCVAR_CLIENTDLL);
+ConVar r_camera_cinematic_viewmodel_fix("r_camera_cinematic_viewmodel_fix", "1", FCVAR_CLIENTDLL);
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CViewRender::GetSmoothedView( const CViewSetup &view, CViewSetup &pSmoothedView )
+{
+	pSmoothedView = view;
+
+	if (r_camera_cinematic.GetBool())
+	{
+		if (!m_HasPrevViewSetup)
+		{
+			m_PrevViewSetup = view;
+			m_HasPrevViewSetup = true;
+		}
+
+		// rectum math LOL - fixes motion issues when game is lagging, by @ChargingTurnip
+		float lerpDelta = max ( 1 + (Helper_GetFrameTime() * 298.062593145) - 1, 1);
+
+		if (r_camera_cinematic_lag_origin.GetBool() && r_camera_cinematic_lag_origin_amount.GetFloat() > 0)
+			pSmoothedView.origin = Lerp(r_camera_cinematic_lag_origin_amount.GetFloat() * lerpDelta,
+				m_PrevViewSetup.origin, view.origin);
+
+		if (r_camera_cinematic_lag_angles.GetBool() && r_camera_cinematic_lag_angles_amount.GetFloat() > 0)
+			pSmoothedView.angles = Lerp(r_camera_cinematic_lag_angles_amount.GetFloat() * lerpDelta,
+				m_PrevViewSetup.angles, view.angles);
+
+		m_PrevViewSetup = pSmoothedView;
+	}
+}
+#if defined(GAMEUI2)
+// The engine keeps rendering the frozen world while the gameui menu is open but
+// the closed GameUI paints an opaque wallpaper over it afterwards, so the menu
+// backdrop is rebuilt by BasePanel (gameui2) from this snapshot instead. Keep a
+// fresh quarter-res copy of the last clean world frame while playing, and freeze
+// it while the menu is up - sampling menu frames makes the backdrop flicker.
+static void UpdateGameUI2BackgroundSnapshot( const CViewSetup &view, int whatToDraw )
+{
+	if ( UseVR() || g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 )
+		return;
+
+	// Nested overlay/camera views must never replace the main world snapshot.
+	if ( !( whatToDraw & RENDERVIEW_DRAWHUD ) || view.m_eStereoEye != STEREO_EYE_MONO )
+		return;
+
+	if ( engine->IsPaused() || ( enginevgui != NULL && enginevgui->IsGameUIVisible() ) )
+		return;
+
+	ITexture* pSnap = materials->FindTexture( "_rt_GameUI2BG_Snap", TEXTURE_GROUP_RENDER_TARGET );
+	if ( pSnap == NULL || pSnap->IsError() )
+		return;
+
+	CMatRenderContextPtr pRenderContext( materials );
+	pRenderContext->CopyRenderTargetToTextureEx( pSnap, 0, NULL, NULL );
+}
+#endif // GAMEUI2
+
 
 //-----------------------------------------------------------------------------
 // Purpose: This renders the entire 3D view and the in-game hud/viewmodel
@@ -1909,9 +1976,14 @@ const char *COM_GetModDirectory();
 //			whatToDraw - 
 //-----------------------------------------------------------------------------
 // This renders the entire 3D view.
-void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatToDraw )
+void CViewRender::RenderView( const CViewSetup &tmpview, int nClearFlags, int whatToDraw )
 {
 	m_UnderWaterOverlayMaterial.Shutdown();					// underwater view will set
+
+	CViewSetup view;
+	GetSmoothedView( tmpview, view );
+
+	CViewSetup tmpViewmodelView = view;
 
 	m_CurrentView = view;
 
@@ -2040,7 +2112,9 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 		GetClientModeNormal()->DoPostScreenSpaceEffects( &view );
 
 		// Now actually draw the viewmodel
-		DrawViewModels( view, whatToDraw & RENDERVIEW_DRAWVIEWMODEL );
+		// DrawViewModels( view, whatToDraw & RENDERVIEW_DRAWVIEWMODEL );
+		DrawViewModels((r_camera_cinematic_viewmodel_fix.GetBool()) ? tmpViewmodelView : view,
+			whatToDraw & RENDERVIEW_DRAWVIEWMODEL);
 
 		DrawUnderwaterOverlay();
 
@@ -2177,6 +2251,25 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 		saveRenderTarget = g_pSourceVR->GetRenderTarget( (ISourceVirtualReality::VREye)(view.m_eStereoEye - 1), ISourceVirtualReality::RT_Color );
 	}
 
+#if defined(GAMEUI2)
+	if (GameUI2 != nullptr)
+	{
+		GameUI2->SetFrustum(GetFrustum());
+		GameUI2->SetView(view);
+
+		ITexture* GameUI2MaskTexture = materials->FindTexture("_rt_MaskGameUI", TEXTURE_GROUP_RENDER_TARGET);
+		if (GameUI2MaskTexture != nullptr && !GameUI2MaskTexture->IsError())
+		{
+			CMatRenderContextPtr RenderContext(materials);
+			RenderContext->PushRenderTargetAndViewport(GameUI2MaskTexture);
+			RenderContext->ClearColor4ub(0, 0, 0, 255);
+			RenderContext->ClearBuffers(true, true, true);
+			RenderContext->PopRenderTargetAndViewport();
+
+			GameUI2->SetMaskTexture(GameUI2MaskTexture);
+		}
+	}
+#endif // GAMEUI2
 	// Draw the 2D graphics
 	render->Push2DView( view, 0, saveRenderTarget, GetFrustum() );
 
@@ -2340,6 +2433,10 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 
 	render->PopView( GetFrustum() );
 	g_WorldListCache.Flush();
+	m_PrevViewSetup = view;
+#if defined(GAMEUI2)
+	UpdateGameUI2BackgroundSnapshot( view, whatToDraw );
+#endif // GAMEUI2
 }
 
 //-----------------------------------------------------------------------------

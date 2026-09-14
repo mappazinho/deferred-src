@@ -171,6 +171,7 @@ int SharedRandomInt( const char *sharedname, int iMinVal, int iMaxVal, int addit
 
 Vector SharedRandomVector( const char *sharedname, float minVal, float maxVal, int additionalSeed /*=0*/ )
 {
+#pragma warning(disable : 4459)
 	Assert( CBaseEntity::GetPredictionRandomSeed() != -1 );
 
 	int seed = SeedFileLineHash( CBaseEntity::GetPredictionRandomSeed(), sharedname, additionalSeed );
@@ -1175,3 +1176,41 @@ const char* UTIL_GetActiveHolidayString()
 	return NULL;
 #endif
 }
+
+#if defined (NEW_LOADING_SCREENS) // Obsidian Conflict Team code
+std::string UTIL_GetCurrentMap(bool bFullPath)
+{
+	static char sMap[MAX_PATH] = "\0";
+
+#ifdef CLIENT_DLL
+	if (!engine) return sMap;
+
+	const char* sMapPath = engine->GetLevelName();
+
+	if (V_strlen(sMapPath) > 0)
+	{
+		if (bFullPath) V_strcpy(sMap, sMapPath);
+		else V_FileBase(sMapPath, sMap, sizeof(sMap));
+	}
+#else
+	if (!gpGlobals) return sMap;
+
+	const char* sMapName = STRING(gpGlobals->mapname);
+
+	if (V_strlen(sMapName) > 0)
+	{
+		if (bFullPath) V_snprintf(sMap, sizeof(sMap), "maps/%s.bsp", sMapName);
+		else V_strcpy(sMap, sMapName);
+	}
+#endif
+	else
+	{
+		static ConVar* s_cvarHostMap = nullptr;
+		if (!s_cvarHostMap) s_cvarHostMap = g_pCVar->FindVar("host_map");
+
+		if (s_cvarHostMap) V_strcpy(sMap, s_cvarHostMap->GetString());
+	}
+
+	return sMap;
+}
+#endif

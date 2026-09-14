@@ -11,6 +11,7 @@
 #include "c_ai_basenpc.h"
 #include "in_buttons.h"
 #include "collisionutils.h"
+#include "engine/ienginesound.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -626,6 +627,76 @@ void C_BaseHLPlayer::PerformClientSideNPCSpeedModifiers( float flFrameTime, CUse
 //-----------------------------------------------------------------------------
 bool C_BaseHLPlayer::CreateMove( float flInputSampleTime, CUserCmd *pCmd )
 {
+	// proper implementation of pause menu ambience
+	static bool playMusic = false;
+	static bool isFading = false;
+	static float fadeStartTime = 0.0f;
+	static int musicGuid = 0;
+
+	if (engine->IsPaused() && !engine->Con_IsVisible())
+	{
+		// cancel new fade if old fade is still going on
+		if (isFading)
+		{
+			isFading = false;
+			if (musicGuid != 0 && enginesound->IsSoundStillPlaying(musicGuid)) 
+				enginesound->SetVolumeByGuid(musicGuid, 1.0f);
+			playMusic = true;
+		}
+
+		if (!playMusic)
+		{
+			enginesound->PrecacheSound("music/df_01test.mp3", true);
+			enginesound->EmitAmbientSound("music/df_01test.mp3", 1.0f);
+			musicGuid = enginesound->GetGuidForLastSoundEmitted();
+			playMusic = true;
+			isFading = false;
+		}
+	}
+	else
+	{
+		if (playMusic)
+		{
+			if (!isFading)
+			{
+				// start fading
+				isFading = true;
+				fadeStartTime = gpGlobals->realtime;
+			}
+
+			float fadeDuration = 1.0f;
+			float t = (gpGlobals->realtime - fadeStartTime) / fadeDuration;
+			float volume = 1.0f - t;
+
+			if (volume <= 0.0f)
+			{
+				// fade complete
+				if (musicGuid != 0 && enginesound->IsSoundStillPlaying(musicGuid)) 
+					enginesound->StopSoundByGuid(musicGuid);
+				playMusic = false;
+				isFading = false;
+				musicGuid = 0;
+			}
+			else
+			{
+				if (musicGuid != 0) 
+				{
+					// CRASH!!! if sound is still playing, do not clean up sound
+					if (enginesound->IsSoundStillPlaying(musicGuid))
+					{
+						enginesound->SetVolumeByGuid(musicGuid, volume);
+					}
+					else
+					{
+						// sound died on its own, clean up
+						playMusic = false;
+						isFading = false;
+						musicGuid = 0;
+					}
+				}
+			}
+		}
+	}
 	bool bResult = BaseClass::CreateMove( flInputSampleTime, pCmd );
 
 	if ( !IsInAVehicle() )

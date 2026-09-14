@@ -53,6 +53,9 @@ $Configuration
 		// Suppress this pointless warning using the undocumented /ignore linker switch
 		// schemalib.lib(schemaclassinfo.obj) : warning LNK4221: This object file does not define any previously undefined public symbols, so it will not be used by any link operation that consumes this library
 		$AdditionalOptions					"$BASE /ignore:4221"
+		// Prebuilt Valve libs (e.g. particles.lib) define CRT helpers like _hypot that
+		// the modern UCRT also defines; resolve duplicates in favor of the first match.
+		$AdditionalOptions					"$BASE /FORCE:MULTIPLE" [$VS2022]
 		$AdditionalOptions					"$BASE $SRCDIR\lib\public\ftol3.obj" [$VS2013 && $WIN32 && !$DISABLE_FTOL3_OVERRIDE && !$SOURCESDK] // Work around CRT bug https://connect.microsoft.com/VisualStudio/feedback/details/806362/vc12-pollutes-the-floating-point-stack-when-casting-infinity-nan-to-unsigned-long#
 	}
 	
@@ -109,7 +112,8 @@ $Project
 				$CustomBuildStep
 				{
 					// General
-					$CommandLine				"$QUOTE$(VCInstallDir)bin\ml.exe$QUOTE /c /Cp /Zi /Fo$QUOTE$(IntDir)\$(InputName).obj$QUOTE $QUOTE$(InputPath)$QUOTE"
+					$CommandLine				"$QUOTE$(VCInstallDir)bin\ml.exe$QUOTE /c /Cp /Zi /Fo$QUOTE$(IntDir)\$(InputName).obj$QUOTE $QUOTE$(InputPath)$QUOTE" [!$VS2022]
+					$CommandLine				"$QUOTE$(VCToolsInstallDir)bin\HostX64\x86\ml.exe$QUOTE /c /Cp /Zi /Fo$QUOTE$(IntDir)\$(InputName).obj$QUOTE $QUOTE$(InputPath)$QUOTE" [$VS2022]
 					$Description				"Compiling pointeroverride.asm"
 					$Outputs					"$(IntDir)\$(InputName).obj"
 				}		
