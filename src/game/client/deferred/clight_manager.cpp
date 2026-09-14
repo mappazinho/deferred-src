@@ -209,7 +209,7 @@ void CLightingManager::BuildLightSortDataBuffer()
 	const int iPartiallyFullSortDataElementCount = m_hRenderLights.Count() % 4;
 	m_uiSortDataCount = ( m_hRenderLights.Count() - iPartiallyFullSortDataElementCount ) / 4;
 
-	for( int i = 0, baseLightIdx = 0; i < m_uiSortDataCount; i++, baseLightIdx += 4 )
+	for( unsigned int i = 0, baseLightIdx = 0; i < m_uiSortDataCount; i++, baseLightIdx += 4 )
 	{
 		def_light_presortdatax4_t& sortData = m_pSortDataX4[i];
 
@@ -482,7 +482,7 @@ void CLightingManager::SortLights()
 #if DEFCFG_USE_SSE
 	fltx4 zNearX4 = ReplicateX4( zNear );
 
-	for( int i = 0; i < m_uiSortDataCount; i++ )
+	for( unsigned int i = 0; i < m_uiSortDataCount; i++ )
 	{
 		def_light_presortdatax4_t& s = m_pSortDataX4[i];
 

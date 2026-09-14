@@ -90,6 +90,13 @@ extern ConVar r_DrawDetailProps;
 
 extern ConVar r_worldlistcache;
 
+#ifndef DF_SKIP_WORLD
+#define DF_SKIP_WORLD 0
+#endif
+#ifndef DF_SKIP_WORLD_DECALS_AND_OVERLAYS
+#define DF_SKIP_WORLD_DECALS_AND_OVERLAYS 0
+#endif
+
 //-----------------------------------------------------------------------------
 // Convars related to fog color
 //-----------------------------------------------------------------------------
@@ -140,8 +147,6 @@ extern ConVar r_eyewaterepsilon;
 extern int g_CurrentViewID;
 extern bool g_bRenderingScreenshot;
 
-//static FrustumCache_t s_FrustumCache;
-extern FrustumCache_t *FrustumCache( void );
 
 
 //-----------------------------------------------------------------------------
@@ -332,6 +337,7 @@ protected:
 
 	void PushComposite();
 	void PopComposite();
+	bool m_bDrawWorldNormal;
 };
 
 
@@ -545,16 +551,6 @@ static inline unsigned long BuildEngineDrawWorldListFlags( unsigned nDrawFlags )
 {
 	unsigned long nEngineFlags = 0;
 
-	if ( ( nDrawFlags & DF_SKIP_WORLD ) == 0 )
-	{
-		nEngineFlags |= DRAWWORLDLISTS_DRAW_WORLD_GEOMETRY;
-	}
-
-	if ( ( nDrawFlags & DF_SKIP_WORLD_DECALS_AND_OVERLAYS ) == 0 )
-	{
-		nEngineFlags |= DRAWWORLDLISTS_DRAW_DECALS_AND_OVERLAYS;
-	}
-
 	if ( nDrawFlags & DF_DRAWSKYBOX )
 	{
 		nEngineFlags |= DRAWWORLDLISTS_DRAW_SKYBOX;
@@ -585,7 +581,6 @@ static inline unsigned long BuildEngineDrawWorldListFlags( unsigned nDrawFlags )
 	if( nDrawFlags & DF_SHADOW_DEPTH_MAP )
 	{
 		nEngineFlags |= DRAWWORLDLISTS_DRAW_SHADOWDEPTH;
-		nEngineFlags &= ~DRAWWORLDLISTS_DRAW_DECALS_AND_OVERLAYS;
 	}
 
 	if( nDrawFlags & DF_RENDER_REFRACTION )
@@ -624,9 +619,6 @@ static void SetClearColorToFogColor()
 // Precache of necessary materials
 //-----------------------------------------------------------------------------
 
-PRECACHE_REGISTER_BEGIN( GLOBAL, PrecacheDeferredPostProcessingEffects )
-	//PRECACHE( MATERIAL, "dev/blurfiltery_and_add_nohdr" )
-PRECACHE_REGISTER_END( )
 
 
 //-----------------------------------------------------------------------------
@@ -635,7 +627,7 @@ PRECACHE_REGISTER_END( )
 extern void AllowCurrentViewAccess( bool allow );
 extern bool IsCurrentViewAccessAllowed();
 
-extern void SetupCurrentView( const Vector &vecOrigin, const QAngle &angles, view_id_t viewID, bool bDrawWorldNormal = false, bool bCullFrontFaces = false );
+extern void SetupCurrentView( const Vector &vecOrigin, const QAngle &angles, view_id_t viewID );
 
 extern view_id_t CurrentViewID();
 
@@ -790,10 +782,6 @@ void CDeferredViewRender::ViewDrawSceneDeferred( const CViewSetup &view, int nCl
 	CMatRenderContextPtr pRenderContext( materials );
 	pRenderContext->SetIntRenderingParameter( INT_RENDERPARM_ENABLE_FIXED_LIGHTING, 0 );
 
-	if ( view.m_bCullFrontFaces )
-	{
-		pRenderContext->FlipCulling( false );
-	}
 }
 
 void CDeferredViewRender::ViewDrawGBuffer( const CViewSetup &view, bool &bDrew3dSkybox, SkyboxVisibility_t &nSkyboxVisible,
@@ -834,7 +822,7 @@ void CDeferredViewRender::ViewDrawComposite( const CViewSetup &view, bool &bDrew
 
 	m_BaseDrawFlags = 0;
 
-	SetupCurrentView( view.origin, view.angles, viewID, view.m_bDrawWorldNormal, view.m_bCullFrontFaces );
+	SetupCurrentView( view.origin, view.angles, viewID );
 
 	// Invoke pre-render methods
 	IGameSystem::PreRenderAllSystems();
@@ -876,7 +864,7 @@ void CDeferredViewRender::ViewCombineDeferredShading( const CViewSetup &view, vi
 
 	m_BaseDrawFlags = 0;
 
-	SetupCurrentView( view.origin, view.angles, viewID, view.m_bDrawWorldNormal, view.m_bCullFrontFaces );
+	SetupCurrentView( view.origin, view.angles, viewID );
 
 	IGameSystem::PreRenderAllSystems();
 
@@ -1464,7 +1452,7 @@ void CDeferredViewRender::DrawViewModels( const CViewSetup &view, bool drawViewm
 	viewModelSetup.zNear = view.zNearViewmodel;
 	viewModelSetup.zFar = view.zFarViewmodel;
 	viewModelSetup.fov = view.fovViewmodel;
-	viewModelSetup.m_flAspectRatio = engine->GetScreenAspectRatio( view.width, view.height );
+	viewModelSetup.m_flAspectRatio = engine->GetScreenAspectRatio();
 	render->Push3DView( viewModelSetup, 0, NULL, GetFrustum() );
 
 	if ( bGBuffer )
@@ -1553,36 +1541,22 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 	C_BaseAnimating::AutoAllowBoneAccess boneaccess( true, true );
 	VPROF( "CViewRender::RenderView" );
 
-	{
-		// HACK: server-side weapons use the viewmodel model, and client-side weapons swap that out for
-		// the world model in DrawModel.  This is too late for some bone setup work that happens before
-		// DrawModel, so here we just iterate all weapons we know of and fix them up ahead of time.
-		MDLCACHE_CRITICAL_SECTION();
-		CUtlLinkedList< CBaseCombatWeapon * > &weaponList = C_BaseCombatWeapon::GetWeaponList();
-		FOR_EACH_LL( weaponList, it )
-		{
-			C_BaseCombatWeapon *weapon = weaponList[it];
-			if ( !weapon->IsDormant() )
-			{
-				weapon->EnsureCorrectRenderingModel();
-			}
-		}
-	}
+
 
 	CMatRenderContextPtr pRenderContext( materials );
 	ITexture *saveRenderTarget = pRenderContext->GetRenderTarget();
 	pRenderContext.SafeRelease(); // don't want to hold for long periods in case in a locking active share thread mode
 
 	{
-		RenderPreScene( worldView );
 
 		// Must be first 
 		render->SceneBegin();
 
-		g_pColorCorrectionMgr->UpdateColorCorrection();
+		pRenderContext.GetFrom( materials );
+		pRenderContext->TurnOnToneMapping();
+		pRenderContext.SafeRelease();
 
-		// Send the current tonemap scalar to the material system
-		UpdateMaterialSystemTonemapScalar();
+
 
 		// clear happens here probably
 		SetupMain3DView( worldView, nClearFlags );
@@ -1590,7 +1564,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 		ProcessDeferredGlobals( worldView );
 		GetLightingManager()->LightSetup( worldView );
 
-		PreViewDrawScene( worldView );
 
 		// Force it to clear the framebuffer if they're in solid space.
 		if ( ( nClearFlags & VIEW_CLEAR_COLOR ) == 0 )
@@ -1612,7 +1585,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 
 		GetLightingManager()->LightTearDown();
 
-		PostViewDrawScene( worldView );
 
 		engine->DrawPortals();
 
@@ -1635,25 +1607,13 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 		}
 		#endif
 
-		if ( !building_cubemaps.GetBool() )
+		if ( !building_cubemaps.GetBool() && worldView.m_bDoBloomAndToneMapping )
 		{
-			if ( IsDepthOfFieldEnabled() )
+			if ( mat_motion_blur_enabled.GetInt() && g_pMaterialSystemHardwareConfig->GetDXSupportLevel() >= 90 )
 			{
 				pRenderContext.GetFrom( materials );
-				{
-					PIXEVENT( pRenderContext, "DoDepthOfField()" );
-					DoDepthOfField( worldView );
-				}
-				pRenderContext.SafeRelease();
-			}
-
-			if ( ( worldView.m_nMotionBlurMode != MOTION_BLUR_DISABLE ) && ( mat_motion_blur_enabled.GetInt() ) )
-			{
-				pRenderContext.GetFrom( materials );
-				{
-					PIXEVENT( pRenderContext, "DoImageSpaceMotionBlur()" );
-					DoImageSpaceMotionBlur( worldView );
-				}
+				PIXEVENT( pRenderContext, "DoImageSpaceMotionBlur" );
+				DoImageSpaceMotionBlur( worldView, worldView.x, worldView.y, worldView.width, worldView.height );
 				pRenderContext.SafeRelease();
 			}
 		}
@@ -1684,15 +1644,15 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 		// Draw fade over entire screen if needed
 		byte color[4];
 		bool blend;
-		GetViewEffects()->GetFadeParams( &color[0], &color[1], &color[2], &color[3], &blend );
+		vieweffects->GetFadeParams( &color[0], &color[1], &color[2], &color[3], &blend );
 
-		// Store off color fade params to be applied in fullscreen postprocess pass
-		SetViewFadeParams( color[0], color[1], color[2], color[3], blend );
 
 		// Draw an overlay to make it even harder to see inside smoke particle systems.
 		DrawSmokeFogOverlay();
 
 		// Overlay screen fade on entire screen
+		IMaterial *pFadeMaterial = blend ? m_ModulateSingleColor : m_TranslucentSingleColor;
+		render->ViewDrawFade( color, pFadeMaterial );
 		PerformScreenOverlay( worldView.x, worldView.y, worldView.width, worldView.height );
 
 		// Prevent sound stutter if going slow
@@ -1753,7 +1713,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 		}
 		#endif
 
-		GetClientMode()->DoPostScreenSpaceEffects( &worldView );
+		g_pClientMode->DoPostScreenSpaceEffects( &worldView );
 
 		CleanupMain3DView( worldView );
 
@@ -1785,7 +1745,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 			CViewSetup tempView = m_OverlayViewSetup;
 			tempView.fov = ScaleFOVByWidthRatio( tempView.fov, tempView.m_flAspectRatio / ( 4.0f / 3.0f ) );
 			tempView.m_bDoBloomAndToneMapping = false;				// FIXME: Hack to get Mark up and running
-			tempView.m_nMotionBlurMode = MOTION_BLUR_DISABLE;		// FIXME: Hack to get Mark up and running
 			m_bDrawOverlay = false;
 			RenderView( tempView, m_OverlayClearFlags, m_OverlayDrawFlags );
 			m_CurrentView = currentView;
@@ -1861,7 +1820,6 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 			// which is potentially only half the screen
 			if ( true )
 			{
-				vecHudPanels.AddToTail( VGui_GetFullscreenRootVPANEL() );
 
 #if defined( TOOLFRAMEWORK_VGUI_REFACTOR )
 				vecHudPanels.AddToTail( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
@@ -1881,7 +1839,7 @@ void CDeferredViewRender::RenderView( const CViewSetup &view, int nClearFlags, i
 
 			VGui_PostRender();
 
-			GetClientMode()->PostRenderVGui();
+			g_pClientMode->PostRenderVGui();
 			pRenderContext->Flush();
 		}
 
@@ -2418,16 +2376,6 @@ void CSkyboxViewDeferred::DrawInternal( view_id_t iSkyBoxViewID, bool bInvokePre
 		VectorScale( origin, scale, origin );
 		VectorAdd( origin, vSkyOrigin, origin );
 
-		if( m_bCustomViewMatrix )
-		{
-			Vector vTransformedSkyOrigin;
-			VectorRotate( vSkyOrigin, m_matCustomViewMatrix, vTransformedSkyOrigin ); //Rotate instead of transform because we haven't scale the existing offset yet
-
-			//scale existing translation, and tack on the skybox offset (subtract because it's a view matrix)
-			m_matCustomViewMatrix.m_flMatVal[0][3] = (m_matCustomViewMatrix.m_flMatVal[0][3] * scale) - vTransformedSkyOrigin.x;
-			m_matCustomViewMatrix.m_flMatVal[1][3] = (m_matCustomViewMatrix.m_flMatVal[1][3] * scale) - vTransformedSkyOrigin.y;
-			m_matCustomViewMatrix.m_flMatVal[2][3] = (m_matCustomViewMatrix.m_flMatVal[2][3] * scale) - vTransformedSkyOrigin.z;
-		}
 	}
 
 	if ( !m_bGBufferPass )
@@ -2879,7 +2827,6 @@ void CBaseWorldViewDeferred::DrawExecute( float waterHeight, view_id_t viewID, f
 	pRenderContext.SafeRelease();
 
 
-	Begin360ZPass();
 	m_DrawFlags |= DF_SKIP_WORLD_DECALS_AND_OVERLAYS;
 	DrawWorldDeferred( waterZAdjust );
 	m_DrawFlags &= ~DF_SKIP_WORLD_DECALS_AND_OVERLAYS;
@@ -2887,7 +2834,6 @@ void CBaseWorldViewDeferred::DrawExecute( float waterHeight, view_id_t viewID, f
 	{
 		DrawOpaqueRenderablesDeferred( m_bDrawWorldNormal );
 	}
-	End360ZPass();		// DrawOpaqueRenderables currently already calls End360ZPass. No harm in calling it again to make sure we're always ending it
 
 	// Only draw decals on opaque surfaces after now. Benefit is two-fold: Early Z benefits on PC, and
 	// we're pulling out stuff that uses the dynamic VB from the 360 Z pass
