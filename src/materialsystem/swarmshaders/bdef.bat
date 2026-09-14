@@ -35,8 +35,24 @@ if errorlevel 1 (
 	exit /b 1
 )
 
-rem buildshaders.bat has legacy assumptions about spaces in SDKBINDIR, so use
-rem the short form when Windows provides one.
+rem Valve's shader scripts require Perl. Git for Windows normally ships a
+rem suitable perl.exe, although its usr\bin directory is not always on PATH.
+where perl.exe >nul 2>nul
+if errorlevel 1 if exist "%ProgramFiles%\Git\usr\bin\perl.exe" set "PATH=%ProgramFiles%\Git\usr\bin;%PATH%"
+where perl.exe >nul 2>nul
+if errorlevel 1 if defined ProgramFiles(x86) if exist "%ProgramFiles(x86)%\Git\usr\bin\perl.exe" set "PATH=%ProgramFiles(x86)%\Git\usr\bin;%PATH%"
+where perl.exe >nul 2>nul
+if errorlevel 1 (
+	echo ERROR: perl.exe is not on PATH.
+	echo Valve's shader build scripts require Perl.
+	echo Git for Windows normally provides it at C:\Program Files\Git\usr\bin\perl.exe.
+	echo Add a Perl installation to PATH and run bdef.bat again.
+	popd
+	exit /b 1
+)
+
+rem Prefer the 8.3 form when Windows provides one, but buildshaders.bat also
+rem quotes SDKBINDIR now so normal paths containing spaces are supported.
 for %%I in ("%SDKBINDIR%") do set "SDKBINDIR=%%~sI"
 
 set "BUILD_SHADER=call buildshaders.bat"
