@@ -1450,17 +1450,13 @@ void CDeferredViewRender::DrawViewModels( const CViewSetup &view, bool drawViewm
 
 	bool bShouldDrawPlayerViewModel = ShouldDrawViewModel( drawViewmodel );
 	bool bShouldDrawToolViewModels = ToolsEnabled();
-
 	if ( !bShouldDrawPlayerViewModel && !bShouldDrawToolViewModels )
 		return;
 
 	CMatRenderContextPtr pRenderContext( materials );
 	MDLCACHE_CRITICAL_SECTION();
-
-
 	PIXEVENT( pRenderContext, "DrawViewModels()" );
 
-	// Restore the matrices
 	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
 	pRenderContext->PushMatrix();
 
@@ -1469,7 +1465,6 @@ void CDeferredViewRender::DrawViewModels( const CViewSetup &view, bool drawViewm
 	viewModelSetup.zFar = view.zFarViewmodel;
 	viewModelSetup.fov = view.fovViewmodel;
 	viewModelSetup.m_flAspectRatio = engine->GetScreenAspectRatio( view.width, view.height );
-
 	render->Push3DView( viewModelSetup, 0, NULL, GetFrustum() );
 
 	if ( bGBuffer )
@@ -1483,59 +1478,38 @@ void CDeferredViewRender::DrawViewModels( const CViewSetup &view, bool drawViewm
 			DEFERRED_RENDER_STAGE_COMPOSITION );
 	}
 
+	pRenderContext->DepthRange( 0.0f, 0.1f );
 
-	const bool bUseDepthHack = true;
-
-	// FIXME: Add code to read the current depth range
-	float depthmin = 0.0f;
-	float depthmax = 1.0f;
-
-	// HACK HACK:  Munge the depth range to prevent view model from poking into walls, etc.
-	// Force clipped down range
-	if( bUseDepthHack )
-		pRenderContext->DepthRange( 0.0f, 0.1f );
-	
-	CViewModelRenderablesList list;
-	ClientLeafSystem()->CollateViewModelRenderables( &list );
-	CViewModelRenderablesList::RenderGroups_t &opaqueList = list.m_RenderGroups[ CViewModelRenderablesList::VM_GROUP_OPAQUE ];
-	CViewModelRenderablesList::RenderGroups_t &translucentList = list.m_RenderGroups[ CViewModelRenderablesList::VM_GROUP_TRANSLUCENT ];
+	CUtlVector< IClientRenderable * > opaqueList;
+	CUtlVector< IClientRenderable * > translucentList;
+	ClientLeafSystem()->CollateViewModelRenderables( opaqueList, translucentList );
 
 	if ( ToolsEnabled() && ( !bShouldDrawPlayerViewModel || !bShouldDrawToolViewModels ) )
 	{
-		int nOpaque = opaqueList.Count();
-		for ( int i = nOpaque-1; i >= 0; --i )
+		for ( int i = opaqueList.Count() - 1; i >= 0; --i )
 		{
-			IClientRenderable *pRenderable = opaqueList[ i ].m_pRenderable;
-			bool bEntity = pRenderable->GetIClientUnknown()->GetBaseEntity() ? true : false;
+			IClientRenderable *pRenderable = opaqueList[i];
+			bool bEntity = pRenderable->GetIClientUnknown()->GetBaseEntity() != NULL;
 			if ( ( bEntity && !bShouldDrawPlayerViewModel ) || ( !bEntity && !bShouldDrawToolViewModels ) )
-			{
 				opaqueList.FastRemove( i );
-			}
 		}
 
-		int nTranslucent = translucentList.Count();
-		for ( int i = nTranslucent-1; i >= 0; --i )
+		for ( int i = translucentList.Count() - 1; i >= 0; --i )
 		{
-			IClientRenderable *pRenderable = translucentList[ i ].m_pRenderable;
-			bool bEntity = pRenderable->GetIClientUnknown()->GetBaseEntity() ? true : false;
+			IClientRenderable *pRenderable = translucentList[i];
+			bool bEntity = pRenderable->GetIClientUnknown()->GetBaseEntity() != NULL;
 			if ( ( bEntity && !bShouldDrawPlayerViewModel ) || ( !bEntity && !bShouldDrawToolViewModels ) )
-			{
 				translucentList.FastRemove( i );
-			}
 		}
 	}
 
-	// Update refract for opaque models & draw
 	bool bUpdatedRefractForOpaque = UpdateRefractIfNeededByList( opaqueList );
 	DrawRenderablesInList( opaqueList );
 
 	if ( !bGBuffer )
 	{
-		// Update refract for translucent models (if we didn't already update it above) & draw
-		if ( !bUpdatedRefractForOpaque ) // Only do this once for better perf
-		{
+		if ( !bUpdatedRefractForOpaque )
 			UpdateRefractIfNeededByList( translucentList );
-		}
 		DrawRenderablesInList( translucentList, STUDIO_TRANSPARENCY );
 	}
 	else
@@ -1544,18 +1518,11 @@ void CDeferredViewRender::DrawViewModels( const CViewSetup &view, bool drawViewm
 			DEFERRED_RENDER_STAGE_INVALID );
 	}
 
-	// Reset the depth range to the original values
-	if( bUseDepthHack )
-		pRenderContext->DepthRange( depthmin, depthmax );
-
+	pRenderContext->DepthRange( 0.0f, 1.0f );
 	if ( bGBuffer )
-	{
 		CGBufferView::PopGBuffer();
-	}
 
 	render->PopView( GetFrustum() );
-
-	// Restore the matrices
 	pRenderContext->MatrixMode( MATERIAL_PROJECTION );
 	pRenderContext->PopMatrix();
 }
@@ -2283,160 +2250,6 @@ static void DrawClippedDepthBox( IClientRenderable *pEnt, float *pClipPlane )
 	pRenderContext->Flush( false );
 }
 
-//-----------------------------------------------------------------------------
-// Unified bit of draw code for opaque and translucent renderables
-//-----------------------------------------------------------------------------
-static inline void DrawRenderable( IClientRenderable *pEnt, int flags, const RenderableInstance_t &instance )
-{
-	float *pRenderClipPlane = NULL;
-	if( r_entityclips.GetBool() )
-		pRenderClipPlane = pEnt->GetRenderClipPlane();
-
-	if( pRenderClipPlane )	
-	{
-		CMatRenderContextPtr pRenderContext( materials );
-		if( !materials->UsingFastClipping() ) //do NOT change the fast clip plane mid-scene, depth problems result. Regular user clip planes are fine though
-			pRenderContext->PushCustomClipPlane( pRenderClipPlane );
-		else
-			DrawClippedDepthBox( pEnt, pRenderClipPlane );
-		Assert( view->GetCurrentlyDrawingEntity() == NULL );
-		view->SetCurrentlyDrawingEntity( pEnt->GetIClientUnknown()->GetBaseEntity() );
-		bool bBlockNormalDraw = false;
-		if( !bBlockNormalDraw )
-			pEnt->DrawModel( flags, instance );
-		view->SetCurrentlyDrawingEntity( NULL );
-
-		if( !materials->UsingFastClipping() )	
-			pRenderContext->PopCustomClipPlane();
-	}
-	else
-	{
-		Assert( view->GetCurrentlyDrawingEntity() == NULL );
-		view->SetCurrentlyDrawingEntity( pEnt->GetIClientUnknown()->GetBaseEntity() );
-		bool bBlockNormalDraw = false;
-		if( !bBlockNormalDraw )
-			pEnt->DrawModel( flags, instance );
-		view->SetCurrentlyDrawingEntity( NULL );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Draws all opaque renderables in leaves that were rendered
-//-----------------------------------------------------------------------------
-static inline void DrawOpaqueRenderable( IClientRenderable *pEnt, bool bTwoPass, bool bNoDecals )
-{
-	float color[3];
-
-	pEnt->GetColorModulation( color );
-	render->SetColorModulation(	color );
-
-	int flags = STUDIO_RENDER;
-	if ( bTwoPass )
-	{
-		flags |= STUDIO_TWOPASS;
-	}
-
-	if ( bNoDecals )
-	{
-		flags |= STUDIO_SKIP_DECALS;
-	}
-
-	RenderableInstance_t instance;
-	instance.m_nAlpha = 255;
-	DrawRenderable( pEnt, flags, instance );
-}
-
-//-------------------------------------
-
-
-static void SetupBonesOnBaseAnimating( C_BaseAnimating *&pBaseAnimating )
-{
-	pBaseAnimating->SetupBones( NULL, -1, -1, gpGlobals->curtime );
-}
-
-
-static void DrawOpaqueRenderables_DrawBrushModels( int nCount, CClientRenderablesList::CEntry **ppEntities, bool bNoDecals )
-{
-	for( int i = 0; i < nCount; ++i )
-	{
-		Assert( !ppEntities[i]->m_TwoPass );
-		DrawOpaqueRenderable( ppEntities[i]->m_pRenderable, false, bNoDecals );
-	}
-}
-
-static void DrawOpaqueRenderables_DrawStaticProps( int nCount, CClientRenderablesList::CEntry **ppEntities )
-{
-	if ( nCount == 0 )
-		return;
-
-	float one[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	render->SetColorModulation(	one );
-	render->SetBlend( 1.0f );
-	
-	const int MAX_STATICS_PER_BATCH = 512;
-	IClientRenderable *pStatics[ MAX_STATICS_PER_BATCH ];
-	int numScheduled = 0, numAvailable = MAX_STATICS_PER_BATCH;
-
-	for( int i = 0; i < nCount; ++i )
-	{
-		CClientRenderablesList::CEntry *itEntity = ppEntities[i];
-		if ( itEntity->m_pRenderable )
-			NULL;
-		else
-			continue;
-
-		pStatics[ numScheduled ++ ] = itEntity->m_pRenderable;
-		if ( -- numAvailable > 0 )
-			continue; // place a hint for compiler to predict more common case in the loop
-		
-		staticpropmgr->DrawStaticProps( pStatics, numScheduled, DEPTH_MODE_NORMAL, vcollide_wireframe.GetBool() );
-		numScheduled = 0;
-		numAvailable = MAX_STATICS_PER_BATCH;
-	}
-	
-	if ( numScheduled )
-		staticpropmgr->DrawStaticProps( pStatics, numScheduled, DEPTH_MODE_NORMAL, vcollide_wireframe.GetBool() );
-}
-
-static void DrawOpaqueRenderables_Range( int nCount, CClientRenderablesList::CEntry **ppEntities, bool bNoDecals )
-{
-	for ( int i = 0; i < nCount; ++i )
-	{
-		CClientRenderablesList::CEntry *itEntity = ppEntities[i]; 
-		if ( itEntity->m_pRenderable )
-		{
-			DrawOpaqueRenderable( itEntity->m_pRenderable, ( itEntity->m_TwoPass != 0 ), bNoDecals );
-		}
-	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Renders all translucent entities in the render list
-//-----------------------------------------------------------------------------
-static inline void DrawTranslucentRenderable( IClientRenderable *pEnt, const RenderableInstance_t &instance, bool twoPass )
-{
-
-
-	// Renderable list building should already have caught this
-	Assert( instance.m_nAlpha > 0 );
-
-	// Determine blending amount and tell engine
-	float blend = (float)( instance.m_nAlpha / 255.0f );
-
-	// Tell engine
-	render->SetBlend( blend );
-
-	float color[3];
-	pEnt->GetColorModulation( color );
-	render->SetColorModulation(	color );
-
-	int flags = STUDIO_RENDER | STUDIO_TRANSPARENCY;
-	if ( twoPass )
-		flags |= STUDIO_TWOPASS;
-
-	DrawRenderable( pEnt, flags, instance );
-}
 
 void CBaseWorldViewDeferred::DrawWorldDeferred( float waterZAdjust )
 {
@@ -2445,46 +2258,10 @@ void CBaseWorldViewDeferred::DrawWorldDeferred( float waterZAdjust )
 
 void CBaseWorldViewDeferred::DrawOpaqueRenderablesDeferred( bool bNoDecals )
 {
-	VPROF( "CViewRender::DrawOpaqueRenderables" );
-
-	if ( !r_drawopaquerenderables.GetBool() || !m_pMainView->ShouldDrawEntities() )
-		return;
-
-	render->SetBlend( 1 );
-	RopeManager()->ResetRenderCache();
-	g_pParticleSystemMgr->ResetRenderCache();
-
-	const int nOpaqueRenderableCount = m_pRenderablesList->m_RenderGroupCounts[RENDER_GROUP_OPAQUE];
-	CUtlVector< CClientRenderablesList::CEntry* > brushModels;
-	CUtlVector< CClientRenderablesList::CEntry* > staticProps;
-	CUtlVector< CClientRenderablesList::CEntry* > otherRenderables;
-	brushModels.EnsureCapacity( nOpaqueRenderableCount );
-	staticProps.EnsureCapacity( nOpaqueRenderableCount );
-	otherRenderables.EnsureCapacity( nOpaqueRenderableCount );
-
-	CClientRenderablesList::CEntry *pOpaqueList = m_pRenderablesList->m_RenderGroups[RENDER_GROUP_OPAQUE];
-	for ( int i = 0; i < nOpaqueRenderableCount; ++i )
-	{
-		switch ( pOpaqueList[i].m_nModelType )
-		{
-		case RENDERABLE_MODEL_BRUSH:
-			brushModels.AddToTail( &pOpaqueList[i] );
-			break;
-		case RENDERABLE_MODEL_STATIC_PROP:
-			staticProps.AddToTail( &pOpaqueList[i] );
-			break;
-		default:
-			otherRenderables.AddToTail( &pOpaqueList[i] );
-			break;
-		}
-	}
-
-	DrawOpaqueRenderables_DrawBrushModels( brushModels.Count(), brushModels.Base(), bNoDecals );
-	DrawOpaqueRenderables_Range( otherRenderables.Count(), otherRenderables.Base(), bNoDecals );
-	DrawOpaqueRenderables_DrawStaticProps( staticProps.Count(), staticProps.Base() );
-
-	RopeManager()->DrawRenderCache( false );
-	g_pParticleSystemMgr->DrawRenderCache( false );
+	(void)bNoDecals;
+	const ERenderDepthMode depthMode = ( CurrentViewID() == VIEW_DEFERRED_SHADOW )
+		? DEPTH_MODE_SHADOW : DEPTH_MODE_NORMAL;
+	DrawOpaqueRenderables( depthMode );
 }
 
 
@@ -2690,7 +2467,7 @@ void CSkyboxViewDeferred::DrawInternal( view_id_t iSkyBoxViewID, bool bInvokePre
 	DrawWorld( 0.0f );
 
 	// Iterate over all leaves and render objects in those leaves
-	DrawOpaqueRenderables( false );
+	DrawOpaqueRenderables( DEPTH_MODE_NORMAL );
 
 	if ( !m_bGBufferPass )
 	{
