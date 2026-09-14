@@ -1,10 +1,14 @@
 //-----------------------------------------------------------------------------
-// Biohazard's Alien Swarm deferred-lighting shader DLL, ported to SDK 2013.
+// Biohazard's deferred-lighting game shader module, ported to SDK 2013.
+//
+// SDK 2013 loads the mod shader implementation as game_shader_dx9.dll. Keep
+// the deferred sources together in this project so they use the matching
+// BaseVSShader implementation and generated deferred shader headers.
 //-----------------------------------------------------------------------------
 
 $Macro SRCDIR        "..\.."
 $Macro GAMENAME      "mod_episodic"
-$Macro OUTBINNAME    "game_shader_generic_deferred"
+$Macro OUTBINNAME    "game_shader_dx9"
 $Macro OUTBINDIR     "$SRCDIR\..\game\$GAMENAME\bin"
 
 $Include "$SRCDIR\vpc_scripts\source_dll_base.vpc"

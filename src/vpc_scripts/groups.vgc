@@ -29,7 +29,6 @@ $Group "game"
 $Group "shaders"
 {
 	"game_shader_dx9"
-	"game_shader_deferred"
 }
 
 $Group "everything"
@@ -38,7 +37,6 @@ $Group "everything"
 	"client"
 	"fgdlib"
 	"game_shader_dx9"
-	"game_shader_deferred"
 	"glview"
 	"height2normal"
 	"mathlib"
@@ -68,4 +66,3 @@ $Group "dedicated"
 	"server"
 	"tier1"
 }
-

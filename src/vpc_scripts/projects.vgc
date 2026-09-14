@@ -27,11 +27,6 @@ $Project "fgdlib"
 $Project "game_shader_dx9"
 {
 	"materialsystem\stdshaders\game_shader_dx9_hl2.vpc" [$HL2]
-	"materialsystem\stdshaders\game_shader_dx9_episodic.vpc"  [$EPISODIC]
-}
-
-$Project "game_shader_deferred"
-{
 	"materialsystem\swarmshaders\game_shader_deferred.vpc" [$EPISODIC]
 }
 
@@ -140,4 +135,3 @@ $Project "gameui2"
 {
 	"game\gameui2\gameui2_base.vpc"		[($WIN32||$POSIX)]
 }
-

@@ -12,7 +12,7 @@ IDeferredExtension *GetDeferredExt()
 bool ConnectDeferredExt()
 {
 	char modulePath[MAX_PATH*4];
-	Q_snprintf( modulePath, sizeof( modulePath ), "%s/bin/game_shader_generic_deferred.dll\0", engine->GetGameDirectory() );
+	Q_snprintf( modulePath, sizeof( modulePath ), "%s/bin/game_shader_dx9.dll\0", engine->GetGameDirectory() );
 	__g_pDeferredShaderModule = Sys_LoadModule( modulePath );
 
 	if ( __g_pDeferredShaderModule )
@@ -21,10 +21,10 @@ bool ConnectDeferredExt()
 		__g_defExt = shaderDeferredDLLFactory ? ((IDeferredExtension *) shaderDeferredDLLFactory( DEFERRED_EXTENSION_VERSION, NULL )) : NULL;
 
 		if ( !__g_defExt )
-			Warning( "Unable to pull IDeferredExtension interface.\n" );
+			Warning( "Unable to pull IDeferredExtension interface from game_shader_dx9.dll.\n" );
 	}
 	else
-		Warning( "Cannot load game_shader_generic_deferred.dll from %s!\n", modulePath );
+		Warning( "Cannot load game_shader_dx9.dll from %s!\n", modulePath );
 
 	return __g_defExt != NULL;
 }
