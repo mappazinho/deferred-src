@@ -6,6 +6,8 @@
 	supportsvr	1
 
 	type		singleplayer_only
+	SupportsDX8	0
+	GameData	"deferred.fgd"
 
 	FileSystem
 	{

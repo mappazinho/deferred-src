@@ -1,0 +1,6 @@
+D:\deferred-src\src\devtools\bin\d3dx9_33.dll 
+D:\deferred-src\src\dx10sdk\utilities\dx9_30\dx_proxy.dll 
+C:\Users\tempu\AppData\Local\Temp\codex-deferred-shader-tools\shadercompile.exe 
+C:\Users\tempu\AppData\Local\Temp\codex-deferred-shader-tools\shadercompile_dll.dll 
+C:\Users\tempu\AppData\Local\Temp\codex-deferred-shader-tools\vstdlib.dll 
+C:\Users\tempu\AppData\Local\Temp\codex-deferred-shader-tools\tier0.dll 

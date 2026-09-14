@@ -53,6 +53,7 @@
 #include "clientmode_shared.h"
 #include "sourcevr/isourcevirtualreality.h"
 #include "client_virtualreality.h"
+#include "deferred/cdeferred_manager_client.h"
 
 #ifdef PORTAL
 //#include "C_Portal_Player.h"
@@ -92,7 +93,7 @@ static ConCommand test_freezeframe( "test_freezeframe", testfreezeframe_f, "Test
 
 //-----------------------------------------------------------------------------
 
-static ConVar r_visocclusion( "r_visocclusion", "0", FCVAR_CHEAT );
+ConVar r_visocclusion( "r_visocclusion", "0", FCVAR_CHEAT );
 extern ConVar r_flashlightdepthtexture;
 extern ConVar vcollide_wireframe;
 extern ConVar mat_motion_blur_enabled;
@@ -104,22 +105,22 @@ extern bool g_bDumpRenderTargets;
 //-----------------------------------------------------------------------------
 // Convars related to controlling rendering
 //-----------------------------------------------------------------------------
-static ConVar cl_maxrenderable_dist("cl_maxrenderable_dist", "3000", FCVAR_CHEAT, "Max distance from the camera at which things will be rendered" );
+ConVar cl_maxrenderable_dist("cl_maxrenderable_dist", "3000", FCVAR_CHEAT, "Max distance from the camera at which things will be rendered" );
 
 ConVar r_entityclips( "r_entityclips", "1" ); //FIXME: Nvidia drivers before 81.94 on cards that support user clip planes will have problems with this, require driver update? Detect and disable?
 
 // Matches the version in the engine
-static ConVar r_drawopaqueworld( "r_drawopaqueworld", "1", FCVAR_CHEAT );
-static ConVar r_drawtranslucentworld( "r_drawtranslucentworld", "1", FCVAR_CHEAT );
-static ConVar r_3dsky( "r_3dsky","1", 0, "Enable the rendering of 3d sky boxes" );
-static ConVar r_skybox( "r_skybox","1", FCVAR_CHEAT, "Enable the rendering of sky boxes" );
+ConVar r_drawopaqueworld( "r_drawopaqueworld", "1", FCVAR_CHEAT );
+ConVar r_drawtranslucentworld( "r_drawtranslucentworld", "1", FCVAR_CHEAT );
+ConVar r_3dsky( "r_3dsky","1", 0, "Enable the rendering of 3d sky boxes" );
+ConVar r_skybox( "r_skybox","1", FCVAR_CHEAT, "Enable the rendering of sky boxes" );
 #ifdef TF_CLIENT_DLL
 ConVar r_drawviewmodel( "r_drawviewmodel","1", FCVAR_ARCHIVE );
 #else
 ConVar r_drawviewmodel( "r_drawviewmodel","1", FCVAR_CHEAT );
 #endif
-static ConVar r_drawtranslucentrenderables( "r_drawtranslucentrenderables", "1", FCVAR_CHEAT );
-static ConVar r_drawopaquerenderables( "r_drawopaquerenderables", "1", FCVAR_CHEAT );
+ConVar r_drawtranslucentrenderables( "r_drawtranslucentrenderables", "1", FCVAR_CHEAT );
+ConVar r_drawopaquerenderables( "r_drawopaquerenderables", "1", FCVAR_CHEAT );
 static ConVar r_threaded_renderables( "r_threaded_renderables", "0" );
 
 // FIXME: This is not static because we needed to turn it off for TF2 playtests
@@ -140,23 +141,23 @@ static ConVar fog_startskybox( "fog_startskybox", "-1", FCVAR_CHEAT );
 static ConVar fog_endskybox( "fog_endskybox", "-1", FCVAR_CHEAT );
 static ConVar fog_maxdensityskybox( "fog_maxdensityskybox", "-1", FCVAR_CHEAT );
 static ConVar fog_colorskybox( "fog_colorskybox", "-1 -1 -1", FCVAR_CHEAT );
-static ConVar fog_enableskybox( "fog_enableskybox", "1", FCVAR_CHEAT );
+ConVar fog_enableskybox( "fog_enableskybox", "1", FCVAR_CHEAT );
 static ConVar fog_maxdensity( "fog_maxdensity", "-1", FCVAR_CHEAT );
 
 
 //-----------------------------------------------------------------------------
 // Water-related convars
 //-----------------------------------------------------------------------------
-static ConVar r_debugcheapwater( "r_debugcheapwater", "0", FCVAR_CHEAT );
+ConVar r_debugcheapwater( "r_debugcheapwater", "0", FCVAR_CHEAT );
 #ifndef _X360
-static ConVar r_waterforceexpensive( "r_waterforceexpensive", "0", FCVAR_ARCHIVE );
+ConVar r_waterforceexpensive( "r_waterforceexpensive", "0", FCVAR_ARCHIVE );
 #endif
-static ConVar r_waterforcereflectentities( "r_waterforcereflectentities", "0" );
-static ConVar r_WaterDrawRefraction( "r_WaterDrawRefraction", "1", 0, "Enable water refraction" );
-static ConVar r_WaterDrawReflection( "r_WaterDrawReflection", "1", 0, "Enable water reflection" );
-static ConVar r_ForceWaterLeaf( "r_ForceWaterLeaf", "1", 0, "Enable for optimization to water - considers view in leaf under water for purposes of culling" );
-static ConVar mat_drawwater( "mat_drawwater", "1", FCVAR_CHEAT );
-static ConVar mat_clipz( "mat_clipz", "1" );
+ConVar r_waterforcereflectentities( "r_waterforcereflectentities", "0" );
+ConVar r_WaterDrawRefraction( "r_WaterDrawRefraction", "1", 0, "Enable water refraction" );
+ConVar r_WaterDrawReflection( "r_WaterDrawReflection", "1", 0, "Enable water reflection" );
+ConVar r_ForceWaterLeaf( "r_ForceWaterLeaf", "1", 0, "Enable for optimization to water - considers view in leaf under water for purposes of culling" );
+ConVar mat_drawwater( "mat_drawwater", "1", FCVAR_CHEAT );
+ConVar mat_clipz( "mat_clipz", "1" );
 
 
 //-----------------------------------------------------------------------------
@@ -165,7 +166,7 @@ static ConVar mat_clipz( "mat_clipz", "1" );
 static ConVar r_screenfademinsize( "r_screenfademinsize", "0" );
 static ConVar r_screenfademaxsize( "r_screenfademaxsize", "0" );
 static ConVar cl_drawmonitors( "cl_drawmonitors", "1" );
-static ConVar r_eyewaterepsilon( "r_eyewaterepsilon", "10.0f", FCVAR_CHEAT );
+ConVar r_eyewaterepsilon( "r_eyewaterepsilon", "10.0f", FCVAR_CHEAT );
 
 #ifdef TF_CLIENT_DLL
 static ConVar pyro_dof( "pyro_dof", "1", FCVAR_ARCHIVE );
@@ -185,7 +186,7 @@ static VMatrix g_matCurrentCamInverse;
 bool s_bCanAccessCurrentView = false;
 IntroData_t *g_pIntroData = NULL;
 static bool	g_bRenderingView = false;			// For debugging...
-static int g_CurrentViewID = VIEW_NONE;
+int g_CurrentViewID = VIEW_NONE;
 bool g_bRenderingScreenshot = false;
 
 
@@ -369,6 +370,11 @@ private:
 };
 
 CWorldListCache g_WorldListCache;
+
+void FlushWorldLists()
+{
+	g_WorldListCache.Flush();
+}
 
 //-----------------------------------------------------------------------------
 // Standard 3d skybox view
@@ -1450,7 +1456,7 @@ static void GetFogColorTransition( fogparams_t *pFogParams, float *pColorPrimary
 //-----------------------------------------------------------------------------
 // Purpose: Returns the fog color to use in rendering the current frame.
 //-----------------------------------------------------------------------------
-static void GetFogColor( fogparams_t *pFogParams, float *pColor )
+void GetFogColor( fogparams_t *pFogParams, float *pColor )
 {
 	C_BasePlayer *pbp = C_BasePlayer::GetLocalPlayer();
 	if ( !pbp || !pFogParams )
@@ -1500,7 +1506,7 @@ static void GetFogColor( fogparams_t *pFogParams, float *pColor )
 }
 
 
-static float GetFogStart( fogparams_t *pFogParams )
+float GetFogStart( fogparams_t *pFogParams )
 {
 	if( !pFogParams )
 		return 0.0f;
@@ -1542,7 +1548,7 @@ static float GetFogStart( fogparams_t *pFogParams )
 	}
 }
 
-static float GetFogEnd( fogparams_t *pFogParams )
+float GetFogEnd( fogparams_t *pFogParams )
 {
 	if( !pFogParams )
 		return 0.0f;
@@ -1584,7 +1590,7 @@ static float GetFogEnd( fogparams_t *pFogParams )
 	}
 }
 
-static bool GetFogEnable( fogparams_t *pFogParams )
+bool GetFogEnable( fogparams_t *pFogParams )
 {
 	if ( cl_leveloverview.GetFloat() > 0 )
 		return false;
@@ -1614,7 +1620,7 @@ static bool GetFogEnable( fogparams_t *pFogParams )
 }
 
 
-static float GetFogMaxDensity( fogparams_t *pFogParams )
+float GetFogMaxDensity( fogparams_t *pFogParams )
 {
 	if( !pFogParams )
 		return 1.0f;
@@ -1641,7 +1647,7 @@ static float GetFogMaxDensity( fogparams_t *pFogParams )
 //-----------------------------------------------------------------------------
 // Purpose: Returns the skybox fog color to use in rendering the current frame.
 //-----------------------------------------------------------------------------
-static void GetSkyboxFogColor( float *pColor )
+void GetSkyboxFogColor( float *pColor )
 {			   
 	C_BasePlayer *pbp = C_BasePlayer::GetLocalPlayer();
 	if( !pbp )
@@ -1689,7 +1695,7 @@ static void GetSkyboxFogColor( float *pColor )
 }
 
 
-static float GetSkyboxFogStart( void )
+float GetSkyboxFogStart( void )
 {
 	C_BasePlayer *pbp = C_BasePlayer::GetLocalPlayer();
 	if( !pbp )
@@ -1715,7 +1721,7 @@ static float GetSkyboxFogStart( void )
 	}
 }
 
-static float GetSkyboxFogEnd( void )
+float GetSkyboxFogEnd( void )
 {
 	C_BasePlayer *pbp = C_BasePlayer::GetLocalPlayer();
 	if( !pbp )
@@ -1742,7 +1748,7 @@ static float GetSkyboxFogEnd( void )
 }
 
 
-static float GetSkyboxFogMaxDensity()
+float GetSkyboxFogMaxDensity()
 {
 	C_BasePlayer *pbp = C_BasePlayer::GetLocalPlayer();
 	if ( !pbp )
@@ -3553,8 +3559,10 @@ static inline void UpdateBrushModelLightmap( IClientRenderable *pEnt )
 void CRendering3dView::BuildRenderableRenderLists( int viewID )
 {
 	MDLCACHE_CRITICAL_SECTION();
+	const bool bUpdateLightmaps = viewID != VIEW_SHADOW_DEPTH_TEXTURE &&
+		!GetDeferredManager()->IsDeferredRenderingEnabled();
 
-	if ( viewID != VIEW_SHADOW_DEPTH_TEXTURE )
+	if ( bUpdateLightmaps )
 	{
 		render->BeginUpdateLightmaps();
 	}
@@ -3578,7 +3586,7 @@ void CRendering3dView::BuildRenderableRenderLists( int viewID )
 		StudioStats_FindClosestEntity( m_pRenderablesList );
 	}
 
-	if ( viewID != VIEW_SHADOW_DEPTH_TEXTURE )
+	if ( bUpdateLightmaps )
 	{
 		// update lightmap on brush models if necessary
 		CClientRenderablesList::CEntry *pEntities = m_pRenderablesList->m_RenderGroups[RENDER_GROUP_OPAQUE_BRUSH];

@@ -337,19 +337,7 @@ void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecFo
 	state.m_flShadowSlopeScaleDepthBias = mat_slopescaledepthbias_shadowmap.GetFloat();
 	state.m_flShadowDepthBias = mat_depthbias_shadowmap.GetFloat();
 
-	if( m_FlashlightHandle == CLIENTSHADOW_INVALID_HANDLE )
-	{
-		m_FlashlightHandle = g_pClientShadowMgr->CreateFlashlight( state );
-	}
-	else
-	{
-		if( !r_flashlightlockposition.GetBool() )
-		{
-			g_pClientShadowMgr->UpdateFlashlightState( m_FlashlightHandle, state );
-		}
-	}
-	
-	g_pClientShadowMgr->UpdateProjectedTexture( m_FlashlightHandle, true );
+	UpdateLightProjection( state );
 	
 	// Kill the old flashlight method if we have one.
 	LightOffOld();
@@ -366,6 +354,20 @@ void CFlashlightEffect::UpdateLightNew(const Vector &vecPos, const Vector &vecFo
 		msg->deleteThis();
 	}
 #endif
+}
+
+void CFlashlightEffect::UpdateLightProjection( FlashlightState_t &state )
+{
+	if ( m_FlashlightHandle == CLIENTSHADOW_INVALID_HANDLE )
+	{
+		m_FlashlightHandle = g_pClientShadowMgr->CreateFlashlight( state );
+	}
+	else if ( !r_flashlightlockposition.GetBool() )
+	{
+		g_pClientShadowMgr->UpdateFlashlightState( m_FlashlightHandle, state );
+	}
+
+	g_pClientShadowMgr->UpdateProjectedTexture( m_FlashlightHandle, true );
 }
 
 //-----------------------------------------------------------------------------

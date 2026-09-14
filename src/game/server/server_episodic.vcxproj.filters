@@ -13,6 +13,9 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{BA03E055-4FA2-FCE3-8A1C-D348547D379C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Deferred Lighting">
+      <UniqueIdentifier>{53EC9CFA-3596-DA70-65EA-6F0714E457CB}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\HL2 DLL">
       <UniqueIdentifier>{3C43D38A-46AF-2183-A5E5-44383B1D2652}</UniqueIdentifier>
     </Filter>
@@ -1511,6 +1514,27 @@
     <ClInclude Include="world.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="deferred\cdeferred_manager_server.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLight.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLightContainer.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLightGlobal.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\deferred_server_common.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\deferred_shared_common.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\ssemath_ext.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
     <ClInclude Include="hl2\ai_behavior_actbusy.h">
       <Filter>Source Files\HL2 DLL</Filter>
     </ClInclude>
@@ -2883,6 +2907,21 @@
     </ClCompile>
     <ClCompile Include="world.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\cdeferred_manager_server.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLight.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLightContainer.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLightGlobal.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\deferred_shared_common.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
     </ClCompile>
     <ClCompile Include="..\..\game\shared\episodic\achievements_ep1.cpp">
       <Filter>Source Files\HL2 DLL</Filter>

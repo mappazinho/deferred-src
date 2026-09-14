@@ -1,0 +1,97 @@
+//-----------------------------------------------------------------------------
+// Biohazard's Alien Swarm deferred-lighting shader DLL, ported to SDK 2013.
+//-----------------------------------------------------------------------------
+
+$Macro SRCDIR        "..\.."
+$Macro GAMENAME      "mod_episodic"
+$Macro OUTBINNAME    "game_shader_generic_deferred"
+$Macro OUTBINDIR     "$SRCDIR\..\game\$GAMENAME\bin"
+
+$Include "$SRCDIR\vpc_scripts\source_dll_base.vpc"
+
+$Configuration "Debug"
+{
+	$General
+	{
+		$OutputDirectory          "Debug_dx9_$GAMENAME"
+		$IntermediateDirectory    "Debug_dx9_$GAMENAME"
+	}
+}
+
+$Configuration "Release"
+{
+	$General
+	{
+		$OutputDirectory          "Release_dx9_$GAMENAME"
+		$IntermediateDirectory    "Release_dx9_$GAMENAME"
+	}
+}
+
+$Configuration
+{
+	$Compiler
+	{
+		$AdditionalIncludeDirectories "$BASE;fxctmp9;vshtmp9;$SRCDIR\dx9sdk\include"
+		$PreprocessorDefinitions      "$BASE;STDSHADER_DX9_DLL_EXPORT;FAST_MATERIALVAR_ACCESS;GAME_SHADER_DLL;USE_ACTUAL_DX" [$WIN32]
+	}
+
+	$Linker
+	{
+		$AdditionalDependencies "$BASE version.lib winmm.lib" [$WIN32]
+	}
+}
+
+$Project "Deferred Shaders"
+{
+	$Folder "Source Files"
+	{
+		$File "BaseVSShader.cpp"
+		$File "blur.cpp"
+		$File "debug_lightingctrl.cpp"
+		$File "debug_radiosity_grid.cpp"
+		$File "debug_shadow.cpp"
+		$File "deferred_brush.cpp"
+		$File "deferred_decalModulate.cpp"
+		$File "deferred_model.cpp"
+		$File "deferred_utility.cpp"
+		$File "defpass_composite.cpp"
+		$File "defpass_gbuffer.cpp"
+		$File "defpass_shadow.cpp"
+		$File "IDeferredExt.cpp"
+		$File "lighting_global.cpp"
+		$File "lighting_pass_basic.cpp"
+		$File "lighting_pass_volum.cpp"
+		$File "lighting_volume.cpp"
+		$File "lighting_world.cpp"
+		$File "radiosity_blend.cpp"
+		$File "radiosity_global.cpp"
+		$File "radiosity_propagate.cpp"
+		$File "screenspace_combine.cpp"
+		$File "screenspace_shading.cpp"
+		$File "volume_blend.cpp"
+		$File "volume_prepass.cpp"
+	}
+
+	$Folder "Header Files"
+	{
+		$File "BaseVSShader.h"
+		$File "common_deferred_fxc.h"
+		$File "common_lighting_fxc.h"
+		$File "common_shadowmapping_fxc.h"
+		$File "deferred_context.h"
+		$File "deferred_global_common.h"
+		$File "deferred_includes.h"
+		$File "deferred_utility.h"
+		$File "IDeferredExt.h"
+		$File "lighting_helper.h"
+	}
+
+	$Folder "Link Libraries"
+	{
+		$Lib mathlib
+		$Lib shaderlib
+	}
+
+	$File "buildshaders.bat"
+	$Shaders "deferred_shaders.txt"
+}

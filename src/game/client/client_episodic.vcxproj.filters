@@ -25,6 +25,15 @@
     <Filter Include="Source Files">
       <UniqueIdentifier>{BA03E055-4FA2-FCE3-8A1C-D348547D379C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Deferred Lighting">
+      <UniqueIdentifier>{53EC9CFA-3596-DA70-65EA-6F0714E457CB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Deferred Lighting\Light Editor and Projectable VGUI">
+      <UniqueIdentifier>{00B68A77-8C0E-1BFD-DC03-2D587FB35799}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Deferred Lighting\Shared">
+      <UniqueIdentifier>{E1540CFC-3112-98EB-08E1-75280125615A}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\game_controls">
       <UniqueIdentifier>{1E7DB91A-DC0A-B17F-617D-4C4FB3FA7A3E}</UniqueIdentifier>
     </Filter>
@@ -1823,6 +1832,81 @@
     <ClInclude Include="viewpostprocess.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="deferred\cascade_t.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\cdeferred_manager_client.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\clight_editor.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\clight_manager.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\def_light_t.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\DefCookieProjectable.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\DefCookieTexture.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\deferred_client_common.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\deferred_rt.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\flashlighteffect_deferred.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\IDefCookie.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\materialsystem_passthru.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\viewrender_deferred.h">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\projectable_factory.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_deferred.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_editor_controls.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_editor_props.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_marquee.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_particles.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="deferred\vgui\vgui_projectable.h">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLight.h">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLightContainer.h">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\CDefLightGlobal.h">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\deferred_shared_common.h">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\deferred\ssemath_ext.h">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClInclude>
     <ClInclude Include="game_controls\basemodel_panel.h">
       <Filter>Source Files\game_controls</Filter>
     </ClInclude>
@@ -2937,6 +3021,78 @@
     </ClCompile>
     <ClCompile Include="WorldDimsProxy.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\cascade_t.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\cdeferred_manager_client.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\clight_editor.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\clight_manager.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\def_light_t.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\DefCookieProjectable.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\DefCookieTexture.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\deferred_client_common.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\deferred_rt.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\flashlighteffect_deferred.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\IDeferredExtClient.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\materialsystem_passthru.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\viewrender_deferred.cpp">
+      <Filter>Source Files\Deferred Lighting</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\projectable_factory.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_editor_controls.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_editor_props.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_editor_root.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_marquee.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_particles.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="deferred\vgui\vgui_projectable.cpp">
+      <Filter>Source Files\Deferred Lighting\Light Editor and Projectable VGUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLight.cpp">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLightContainer.cpp">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\CDefLightGlobal.cpp">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\deferred\deferred_shared_common.cpp">
+      <Filter>Source Files\Deferred Lighting\Shared</Filter>
     </ClCompile>
     <ClCompile Include="game_controls\basemodel_panel.cpp">
       <Filter>Source Files\game_controls</Filter>

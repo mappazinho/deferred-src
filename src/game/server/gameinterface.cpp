@@ -129,6 +129,8 @@ extern ConVar tf_mm_servermode;
 #include "replay/ireplaysystem.h"
 #endif
 
+#include "deferred/deferred_shared_common.h"
+
 extern IToolFrameworkServer *g_pToolFrameworkServer;
 extern IParticleSystemQuery *g_pParticleSystemQuery;
 
@@ -1431,6 +1433,7 @@ void CServerGameDLL::CreateNetworkStringTables( void )
 	g_pStringTableInfoPanel = networkstringtable->CreateStringTable( "InfoPanel", MAX_INFOPANEL_STRINGS );
 	g_pStringTableClientSideChoreoScenes = networkstringtable->CreateStringTable( "Scenes", MAX_CHOREO_SCENES_STRINGS );
 	g_pStringTableServerMapCycle = networkstringtable->CreateStringTable( "ServerMapCycle", 128 );
+	g_pStringTable_LightCookies = networkstringtable->CreateStringTable( COOKIE_STRINGTBL_NAME, MAX_COOKIE_TEXTURES );
 
 #ifdef TF_DLL
 	g_pStringTableServerPopFiles = networkstringtable->CreateStringTable( "ServerPopFiles", 128 );
@@ -1451,6 +1454,7 @@ void CServerGameDLL::CreateNetworkStringTables( void )
 			g_pStringTableInfoPanel &&
 			g_pStringTableClientSideChoreoScenes &&
 			g_pStringTableServerMapCycle && 
+			g_pStringTable_LightCookies &&
 			bPopFilesValid
 			);
 

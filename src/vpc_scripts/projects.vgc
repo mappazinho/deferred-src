@@ -30,6 +30,11 @@ $Project "game_shader_dx9"
 	"materialsystem\stdshaders\game_shader_dx9_episodic.vpc"  [$EPISODIC]
 }
 
+$Project "game_shader_deferred"
+{
+	"materialsystem\swarmshaders\game_shader_deferred.vpc" [$EPISODIC]
+}
+
 $Project "glview"
 {
 	"utils\glview\glview.vpc" [$WIN32]

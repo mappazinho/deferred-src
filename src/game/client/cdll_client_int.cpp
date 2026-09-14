@@ -147,6 +147,8 @@
 #include "fbxsystem/fbxsystem.h"
 #endif
 
+#include "deferred/deferred_shared_common.h"
+
 extern vgui::IInputInternal *g_InputInternal;
 
 //=============================================================================
@@ -1727,6 +1729,7 @@ void CHLClient::ResetStringTablePointers()
 	g_pStringTableInfoPanel = NULL;
 	g_pStringTableClientSideChoreoScenes = NULL;
 	g_pStringTableServerMapCycle = NULL;
+	g_pStringTable_LightCookies = NULL;
 
 #ifdef TF_CLIENT_DLL
 	g_pStringTableServerPopFiles = NULL;
@@ -1972,6 +1975,11 @@ void CHLClient::InstallStringTableCallback( const char *tableName )
 		g_pStringTableServerMapCycleMvM = networkstringtable->FindTable( tableName );
 	}
 #endif
+	else if ( !Q_strcasecmp( tableName, COOKIE_STRINGTBL_NAME ) )
+	{
+		g_pStringTable_LightCookies = networkstringtable->FindTable( tableName );
+		g_pStringTable_LightCookies->SetStringChangedCallback( NULL, OnCookieTableChanged );
+	}
 
 	InstallStringTableCallback_GameRules();
 }

@@ -8,6 +8,7 @@
 #include "cbase.h"
 #include "c_baseplayer.h"
 #include "flashlighteffect.h"
+#include "deferred/deferred_shared_common.h"
 #include "weapon_selection.h"
 #include "history_resource.h"
 #include "iinput.h"
@@ -1209,7 +1210,9 @@ void C_BasePlayer::UpdateFlashlight()
 		if (!m_pFlashlight)
 		{
 			// Turned on the headlight; create it.
-			m_pFlashlight = new CFlashlightEffect(index);
+			m_pFlashlight = GetDeferredManager()->IsDeferredRenderingEnabled()
+				? static_cast<CFlashlightEffect *>( new CFlashlightEffectDeferred( index ) )
+				: new CFlashlightEffect( index );
 
 			if (!m_pFlashlight)
 				return;
