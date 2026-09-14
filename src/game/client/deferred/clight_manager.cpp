@@ -498,7 +498,7 @@ void CLightingManager::SortLights()
 			adjustedMins, adjustedMaxs );
 
 		//Jack: this is terrible I know
-		for( int i = 0; i < s.count; i++ )
+		for( unsigned int i = 0; i < s.count; i++ )
 		{
 			if( s.lights[i]->IsSpot() )
 			{
