@@ -147,7 +147,7 @@ void CDeferredLight::Activate()
 	m_iDefFlags = GetSpawnFlags();
 
 	m_bShouldTransmit = GetParent() != NULL ||
-		Q_strlen( GetEntityNameAsCStr() ) > 0;
+		Q_strlen( STRING( GetEntityName() ) ) > 0;
 
 	SetMoveType( (GetParent() != NULL) ? MOVETYPE_PUSH : MOVETYPE_NONE );
 
