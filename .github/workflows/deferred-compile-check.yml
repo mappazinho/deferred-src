@@ -5,6 +5,7 @@ on:
     branches:
       - deferred-sdk2013-compat
 
+# Temporary compile-only validation for the deferred port.
 jobs:
   build:
     runs-on: windows-latest
