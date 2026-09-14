@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Apply SDK 2013 compatibility patch
         run: python3 tools/patch_deferred_sdk2013.py
       - name: Commit compatibility pass
