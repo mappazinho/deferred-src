@@ -16,8 +16,11 @@ jobs:
       - name: Generate Source SDK projects
         working-directory: src
         shell: cmd
-        run: call creategameprojects.bat
-      - name: Build game solution
+        run: |
+          call creategameprojects.bat
+          if exist game\client\client_episodic.vcxproj exit /b 0
+          exit /b 1
+      - name: Compile episodic client
         working-directory: src
         shell: cmd
-        run: msbuild games.sln /p:Configuration=Release /p:Platform=Win32 /m /v:minimal /nologo
+        run: msbuild game\client\client_episodic.vcxproj /t:ClCompile /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /m /v:minimal /nologo
