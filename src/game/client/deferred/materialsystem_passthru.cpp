@@ -145,10 +145,8 @@ static const char *pszShaderReplaceDict[][2] = {
 };
 static const int iNumShaderReplaceDict = ARRAYSIZE( pszShaderReplaceDict );
 
-IMaterial *CDeferredMaterialSystem::FindMaterial( char const* pMaterialName, const char *pTextureGroupName, bool complain, const char *pComplainPrefix )
+IMaterial *CDeferredMaterialSystem::ReplaceMaterialInternal( IMaterial *pMat ) const
 {
-	IMaterial *pMat = m_pBaseMaterialsPassThru->FindMaterial( pMaterialName, pTextureGroupName, complain );
-
 	if ( pMat != NULL )
 	{
 		const char *pszShaderName = pMat->GetShaderName();
@@ -166,4 +164,19 @@ IMaterial *CDeferredMaterialSystem::FindMaterial( char const* pMaterialName, con
 	}
 
 	return pMat;
+}
+
+IMaterial *CDeferredMaterialSystem::FindMaterial( char const* pMaterialName,
+	const char *pTextureGroupName, bool complain, const char *pComplainPrefix )
+{
+	return ReplaceMaterialInternal( m_pBaseMaterialsPassThru->FindMaterial(
+		pMaterialName, pTextureGroupName, complain, pComplainPrefix ) );
+}
+
+IMaterial *CDeferredMaterialSystem::FindMaterialEx( char const* pMaterialName,
+	const char *pTextureGroupName, int nContext, bool complain,
+	const char *pComplainPrefix )
+{
+	return ReplaceMaterialInternal( m_pBaseMaterialsPassThru->FindMaterialEx(
+		pMaterialName, pTextureGroupName, nContext, complain, pComplainPrefix ) );
 }
