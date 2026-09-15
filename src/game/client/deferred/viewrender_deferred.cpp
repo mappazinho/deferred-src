@@ -2808,7 +2808,10 @@ void CBaseWorldViewDeferred::DrawExecute( float waterHeight, view_id_t viewID, f
 	engine->Sound_ExtraUpdate();
 
 	int savedViewID = g_CurrentViewID;
-	g_CurrentViewID = viewID;
+	// The G-buffer renderable list is built using the SDK shadow-depth view.
+	// Draw it under the same view classification so studio-model state stays consistent.
+	g_CurrentViewID = ( viewID == VIEW_DEFERRED_GBUFFER ) ?
+		VIEW_SHADOW_DEPTH_TEXTURE : viewID;
 
 	// Update our render view flags.
 	int iDrawFlagsBackup = m_DrawFlags;
