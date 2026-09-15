@@ -15,7 +15,44 @@ CDeferredManagerClient *GetDeferredManager()
 	return &__g_defmanager;
 }
 
-static CDeferredMaterialSystem g_DeferredMaterialSystem;
+static void RewriteDeferredMaterialKV( KeyValues *pVMTKeyValues )
+{
+	if ( pVMTKeyValues == NULL )
+		return;
+
+	const char *pszShaderName = pVMTKeyValues->GetName();
+	if ( pszShaderName == NULL || *pszShaderName == '\0' )
+		return;
+
+	if ( !Q_stricmp( pszShaderName, "vertexlitgeneric" ) )
+		pVMTKeyValues->SetName( "DEFERRED_MODEL" );
+	else if ( !Q_stricmp( pszShaderName, "lightmappedgeneric" ) ||
+		!Q_stricmp( pszShaderName, "worldvertextransition" ) ||
+		!Q_stricmp( pszShaderName, "multiblend" ) )
+		pVMTKeyValues->SetName( "DEFERRED_BRUSH" );
+	else if ( !Q_stricmp( pszShaderName, "decalmodulate" ) )
+		pVMTKeyValues->SetName( "DEFERRED_DECALMODULATE" );
+}
+
+// SDK 2013 creates some materials without going through FindMaterial().
+// Keep those runtime/procedural materials on the same deferred shader path too.
+class CDeferredMaterialSystemRuntimeHooks : public CDeferredMaterialSystem
+{
+public:
+	virtual IMaterial *FindProceduralMaterial( const char *pMaterialName, const char *pTextureGroupName, KeyValues *pVMTKeyValues )
+	{
+		RewriteDeferredMaterialKV( pVMTKeyValues );
+		return CDeferredMaterialSystem::FindProceduralMaterial( pMaterialName, pTextureGroupName, pVMTKeyValues );
+	}
+
+	virtual IMaterial *CreateMaterial( const char *pMaterialName, KeyValues *pVMTKeyValues )
+	{
+		RewriteDeferredMaterialKV( pVMTKeyValues );
+		return CDeferredMaterialSystem::CreateMaterial( pMaterialName, pVMTKeyValues );
+	}
+};
+
+static CDeferredMaterialSystemRuntimeHooks g_DeferredMaterialSystem;
 static IMaterialSystem *g_pOldMatSystem;
 
 
@@ -196,7 +233,7 @@ void CDeferredManagerClient::InitializeDeferredMaterials()
 	if ( m_pKV_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ] != NULL )
 	{
 		m_pKV_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ]->SetInt( "$LIGHTTYPE", DEFLIGHTTYPE_SPOT );
-		m_pMat_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ] = materials->CreateMaterial( "__lightpass_spot_v", m_pKV_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ] );
+		m_pMat_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ] = materials->CreateMaterial( "__lightpass_spot_vfs", m_pKV_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_FULLSCREEN ] );
 	}
 
 	m_pKV_Def[ DEF_MAT_LIGHT_VOLUME_SPOT_WORLD ] = new KeyValues( "LIGHTING_VOLUME" );
