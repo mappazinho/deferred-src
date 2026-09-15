@@ -44,6 +44,7 @@ sampler sVolumeprepass						: register( s0 );
 sampler sDepth								: register( s1 );
 
 const float3 g_vecViewOrigin				: register( c0 );
+const float g_flVolumeIntensity			: register( c7 );
 //const float4 g_vecShadowMappingTweaks_0		: register( c1 );
 //const float4 g_vecShadowMappingTweaks_1		: register( c2 );
 
@@ -212,7 +213,8 @@ PS_OUTPUT main( const PS_INPUT In )
 
 	Out.vColor_0.xyz *= g_flMixedData[ 1 ].rgb *		// diffuse color
 		(1 - g_flMixedData[ 4 ].x) *					// shadow min
-		VOLUMTWEAK_INTENSITY_SPOT;
+		VOLUMTWEAK_INTENSITY_SPOT *
+		g_flVolumeIntensity;
 
 	return Out;
 }

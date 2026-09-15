@@ -93,6 +93,7 @@ struct volumeData_t
 	int iNumRows;
 
 	bool bHasCookie;
+	float flIntensity;
 
 #if DEFCFG_ADAPTIVE_VOLUMETRIC_LOD
 	int iLOD;

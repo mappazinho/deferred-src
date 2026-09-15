@@ -168,9 +168,11 @@ void CDeferredLight::Activate()
 
 	if ( !m_bShouldTransmit )
 	{
+		const bool bValidShape = m_iLightType == DEFLIGHTTYPE_POINT ||
+			( m_iLightType == DEFLIGHTTYPE_SPOT && m_flSpotConeOuter > 0.01f );
 		if ( m_iDefFlags & DEFLIGHT_ENABLED &&
 			( m_vecColor_Diff.Get().LengthSqr() > 0 || m_vecColor_Ambient.Get().LengthSqr() > 0 ) &&
-			m_flSpotConeOuter > 0.01f && m_flRadius > 0 )
+			bValidShape && m_flRadius > 0 )
 		{
 			GetDeferredManager()->AddWorldLight( this );
 		}

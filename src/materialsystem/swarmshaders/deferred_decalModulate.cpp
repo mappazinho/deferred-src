@@ -136,6 +136,8 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 				DECLARE_STATIC_VERTEX_SHADER( decalmodulate_vs30 );
 				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  bHasVertexAlpha );
 				SET_STATIC_VERTEX_SHADER_COMBO( LIGHTING_PREVIEW, nLightingPreviewMode != 0 );
+				SET_STATIC_VERTEX_SHADER_COMBO( DOPIXELFOG, 0 );
+				SET_STATIC_VERTEX_SHADER_COMBO( HARDWAREFOGBLEND, 0 );
 				SET_STATIC_VERTEX_SHADER( decalmodulate_vs30 );
 
 				DECLARE_STATIC_PIXEL_SHADER( decalmodulate_ps30 );
@@ -231,13 +233,13 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 				DECLARE_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( SKINNING, pShaderAPI->GetCurrentNumBones() > 0 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( COMPRESSED_VERTS, (int)vertexCompression );
-				_vshIndex.SetDOWATERFOG( pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
-				_vshIndex.SetMORPHING( pShaderAPI->IsHWMorphingEnabled() );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( MORPHING, pShaderAPI->IsHWMorphingEnabled() );
 //				SET_DYNAMIC_VERTEX_SHADER_COMBO( TESSELLATION, 0 );             // JasonM TODO: set this appropriately when we care about decals on subds				
 				SET_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
 
 				DECLARE_DYNAMIC_PIXEL_SHADER( decalmodulate_ps30 );
-				_pshIndex.SetPIXELFOGTYPE( pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
+				SET_DYNAMIC_PIXEL_SHADER_COMBO( PIXELFOGTYPE, pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
 				SET_DYNAMIC_PIXEL_SHADER( decalmodulate_ps30 );
 
 				bool bUnusedTexCoords[3] = { false, false, !pShaderAPI->IsHWMorphingEnabled() };

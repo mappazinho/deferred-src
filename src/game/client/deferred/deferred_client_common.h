@@ -13,6 +13,7 @@ extern ConVar deferred_rt_shadowspot_res;
 extern ConVar deferred_rt_shadowpoint_res;
 
 extern ConVar deferred_lightmanager_debug;
+extern ConVar r_deferred_autolight_volume_intensity;
 
 extern ConVar deferred_override_globalLight_enable;
 extern ConVar deferred_override_globalLight_shadow_enable;

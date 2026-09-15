@@ -14,6 +14,8 @@ ConVar deferred_rt_shadowpoint_lod2_res( "deferred_rt_shadowpoint_lod2_res", "25
 #endif
 
 ConVar deferred_lightmanager_debug( "deferred_lightmanager_debug", "0" );
+ConVar r_deferred_autolight_volume_intensity( "r_deferred_autolight_volume_intensity", "0.08", FCVAR_ARCHIVE,
+	"Volumetric strength for automatically converted light/light_spot entities.", true, 0.0f, true, 1.0f );
 
 ConVar deferred_override_globalLight_enable( "deferred_override_globalLight_enable", "0" );
 ConVar deferred_override_globalLight_shadow_enable( "deferred_override_globalLight_shadow_enable", "1" );

@@ -9,6 +9,7 @@ pushd "%~dp0"
 for %%I in ("%~dp0..\..\..") do set "REPOROOT=%%~fI"
 set "GAMEDIR=%REPOROOT%\game\mod_episodic"
 set "SOURCEDIR=%REPOROOT%\src"
+set "SDKBINDIR=F:\SteamLibrary\steamapps\common\Source SDK Base 2013 Singleplayer\bin"
 
 rem SDKBINDIR may be supplied by the caller. If it is not, try the normal
 rem Source SDK Base 2013 Singleplayer install under Steam's primary library.

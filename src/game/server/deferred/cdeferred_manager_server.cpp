@@ -4,6 +4,7 @@
 #include "mapentities.h"
 #include "filesystem.h"
 #include "bspfile.h"
+#include "map_utils.h"
 
 #include "tier0/memdbgon.h"
 
@@ -31,6 +32,11 @@ void CDeferredManagerServer::Shutdown()
 }
 
 #define LIGHT_MIN_LIGHT_VALUE 0.03f
+
+static ConVar r_deferred_autolight_intensity_scale( "r_deferred_autolight_intensity_scale", "0.25", FCVAR_ARCHIVE,
+	"Brightness multiplier applied while converting Source light/light_spot entities.", true, 0.0f, true, 4.0f );
+static ConVar r_deferred_autolight_intensity_max( "r_deferred_autolight_intensity_max", "1.0", FCVAR_ARCHIVE,
+	"Maximum normalized brightness of automatically converted Source lights.", true, 0.0f, true, 4.0f );
 
 static float ComputeMapLightRadius( float radius, float intensity,
 	float constantAttn, float linearAttn, float quadraticAttn )
@@ -67,6 +73,19 @@ static float ComputeMapLightRadius( const dworldlight_t &light )
 		light.linear_attn, light.quadratic_attn );
 }
 
+static float ComputeMapLightFalloffPower( float linearAttn, float quadraticAttn )
+{
+	// Source's _exponent controls the angular profile of a spotlight, not its
+	// distance falloff. The deferred power field is radial, so derive it from
+	// the authored attenuation curve instead.
+	if ( quadraticAttn > 0.0f )
+		return 2.0f;
+	if ( linearAttn > 0.0f )
+		return 1.0f;
+
+	return 2.0f;
+}
+
 static float GetMapEntityFloat( CEntityMapData &data, const char *key, float defaultValue )
 {
 	char value[MAPKEY_MAXLENGTH];
@@ -86,54 +105,126 @@ static bool GetMapEntityVector( CEntityMapData &data, const char *key, Vector &o
 	return true;
 }
 
+static bool MapHasEntityClass( const char *entStr, const char *className )
+{
+	char skipToken[MAPKEY_MAXLENGTH];
+
+	for ( ; true; entStr = MapEntity_SkipToNextEntity( entStr, skipToken ) )
+	{
+		char token[MAPKEY_MAXLENGTH];
+		entStr = MapEntity_ParseToken( entStr, token );
+		if ( entStr == NULL )
+			break;
+
+		if ( token[0] != '{' )
+			continue;
+
+		CEntityMapData entData( (char *)entStr );
+		char candidateClass[MAPKEY_MAXLENGTH] = { 0 };
+		if ( entData.ExtractValue( "classname", candidateClass ) &&
+			FStrEq( candidateClass, className ) )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static bool FindMapTargetOrigin( const char *entStr, const char *targetName, Vector &targetOrigin )
+{
+	if ( targetName == NULL || !targetName[0] )
+		return false;
+
+	char skipToken[MAPKEY_MAXLENGTH];
+
+	for ( ; true; entStr = MapEntity_SkipToNextEntity( entStr, skipToken ) )
+	{
+		char token[MAPKEY_MAXLENGTH];
+		entStr = MapEntity_ParseToken( entStr, token );
+		if ( entStr == NULL )
+			break;
+
+		if ( token[0] != '{' )
+			continue;
+
+		CEntityMapData entData( (char *)entStr );
+		char candidateName[MAPKEY_MAXLENGTH] = { 0 };
+		if ( entData.ExtractValue( "targetname", candidateName ) &&
+			!Q_stricmp( candidateName, targetName ) &&
+			GetMapEntityVector( entData, "origin", targetOrigin ) )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static bool ComputeMapSpotDirection( CEntityMapData &data, const char *allEntStr,
+	const Vector &lightOrigin, Vector &direction )
+{
+	char targetName[MAPKEY_MAXLENGTH] = { 0 };
+	Vector targetOrigin;
+	if ( data.ExtractValue( "target", targetName ) && targetName[0] &&
+		FindMapTargetOrigin( allEntStr, targetName, targetOrigin ) )
+	{
+		direction = targetOrigin - lightOrigin;
+		if ( VectorNormalize( direction ) > 0.001f )
+			return true;
+	}
+
+	Vector rawAngles = vec3_origin;
+	GetMapEntityVector( data, "angles", rawAngles );
+	SetupLightNormalFromProps( QAngle( rawAngles.x, rawAngles.y, rawAngles.z ),
+		GetMapEntityFloat( data, "angle", 0.0f ),
+		GetMapEntityFloat( data, "pitch", 0.0f ), direction );
+
+	return VectorNormalize( direction ) > 0.001f;
+}
+
 void CDeferredManagerServer::LevelInitPreEntity()
 {
-	const char *entStr = engine->GetMapEntitiesString();
-	if ( entStr == NULL || !*entStr )
+	const char *allEntStr = engine->GetMapEntitiesString();
+	if ( allEntStr == NULL || !*allEntStr )
 		return;
 
 	// Maps authored specifically for the deferred renderer should keep their
 	// explicit deferred-light setup instead of receiving a second set of lights.
-	if ( V_stristr( entStr, "light_deferred" ) != NULL )
+	if ( MapHasEntityClass( allEntStr, "light_deferred" ) )
 		return;
 
 	char bspPath[MAX_PATH];
 	Q_snprintf( bspPath, sizeof( bspPath ), "maps/%s.bsp", STRING( gpGlobals->mapname ) );
 
+	CUtlVector< dworldlight_t > worldLights;
 	FileHandle_t hFile = g_pFullFileSystem->Open( bspPath, "rb", "GAME" );
 	if ( hFile == FILESYSTEM_INVALID_HANDLE )
 	{
 		Warning( "Deferred lighting: unable to open %s for world-light data.\n", bspPath );
-		return;
 	}
-
-	dheader_t header;
-	if ( g_pFullFileSystem->Read( &header, sizeof( header ), hFile ) != sizeof( header ) )
+	else
 	{
+		dheader_t header;
+		if ( g_pFullFileSystem->Read( &header, sizeof( header ), hFile ) == sizeof( header ) &&
+			header.ident == IDBSPHEADER )
+		{
+			const lump_t *pLightLump = &header.lumps[ LUMP_WORLDLIGHTS ];
+			if ( pLightLump->filelen == 0 && header.lumps[ LUMP_WORLDLIGHTS_HDR ].filelen > 0 )
+				pLightLump = &header.lumps[ LUMP_WORLDLIGHTS_HDR ];
+
+			if ( pLightLump->filelen > 0 && ( pLightLump->filelen % sizeof( dworldlight_t ) ) == 0 )
+			{
+				const int lightCount = pLightLump->filelen / sizeof( dworldlight_t );
+				worldLights.SetCount( lightCount );
+				g_pFullFileSystem->Seek( hFile, pLightLump->fileofs, FILESYSTEM_SEEK_HEAD );
+				if ( g_pFullFileSystem->Read( worldLights.Base(), pLightLump->filelen, hFile ) != pLightLump->filelen )
+					worldLights.RemoveAll();
+			}
+		}
+
 		g_pFullFileSystem->Close( hFile );
-		return;
 	}
-
-	if ( header.ident != IDBSPHEADER )
-	{
-		g_pFullFileSystem->Close( hFile );
-		return;
-	}
-
-	const lump_t *pLightLump = &header.lumps[ LUMP_WORLDLIGHTS ];
-	if ( pLightLump->filelen == 0 && header.lumps[ LUMP_WORLDLIGHTS_HDR ].filelen > 0 )
-		pLightLump = &header.lumps[ LUMP_WORLDLIGHTS_HDR ];
-
-	CUtlVector< dworldlight_t > worldLights;
-	if ( pLightLump->filelen > 0 && ( pLightLump->filelen % sizeof( dworldlight_t ) ) == 0 )
-	{
-		const int lightCount = pLightLump->filelen / sizeof( dworldlight_t );
-		worldLights.SetCount( lightCount );
-		g_pFullFileSystem->Seek( hFile, pLightLump->fileofs, FILESYSTEM_SEEK_HEAD );
-		g_pFullFileSystem->Read( worldLights.Base(), pLightLump->filelen, hFile );
-	}
-
-	g_pFullFileSystem->Close( hFile );
 
 	const char *szParamDiffuse = GetLightParamName( LPARAM_DIFFUSE );
 	const char *szParamLightType = GetLightParamName( LPARAM_LIGHTTYPE );
@@ -151,6 +242,7 @@ void CDeferredManagerServer::LevelInitPreEntity()
 
 	int convertedLights = 0;
 	char skipToken[MAPKEY_MAXLENGTH];
+	const char *entStr = allEntStr;
 
 	for ( ; true; entStr = MapEntity_SkipToNextEntity( entStr, skipToken ) )
 	{
@@ -176,21 +268,29 @@ void CDeferredManagerServer::LevelInitPreEntity()
 		GetMapEntityVector( entData, "origin", pos );
 
 		QAngle angles = vec3_angle;
-		Vector angleVector;
-		if ( GetMapEntityVector( entData, "angles", angleVector ) )
-			angles.Init( angleVector.x, angleVector.y, angleVector.z );
-
-		if ( isSpot )
-		{
-			char pitchText[MAPKEY_MAXLENGTH] = { 0 };
-			if ( entData.ExtractValue( "pitch", pitchText ) && pitchText[0] )
-				angles.x = -atof( pitchText );
-		}
+		Vector spotDirection;
+		const bool hasSpotDirection = isSpot &&
+			ComputeMapSpotDirection( entData, allEntStr, pos, spotDirection );
+		if ( hasSpotDirection )
+			VectorAngles( spotDirection, angles );
 
 		float radius = GetMapEntityFloat( entData, "_distance", 0.0f );
-		float innerCone = GetMapEntityFloat( entData, "_inner_cone", 30.0f );
-		float outerCone = GetMapEntityFloat( entData, "_cone", 45.0f );
-		float exponent = GetMapEntityFloat( entData, "_exponent", 1.0f );
+		float innerConeHalfAngle = GetMapEntityFloat( entData, "_inner_cone", 0.0f );
+		if ( innerConeHalfAngle == 0.0f )
+			innerConeHalfAngle = 10.0f;
+		float outerConeHalfAngle = GetMapEntityFloat( entData, "_cone", 0.0f );
+		if ( outerConeHalfAngle == 0.0f )
+			outerConeHalfAngle = innerConeHalfAngle;
+		if ( outerConeHalfAngle < innerConeHalfAngle )
+			outerConeHalfAngle = innerConeHalfAngle;
+
+		bool deferredPointLight = isPoint ||
+			( innerConeHalfAngle == 180.0f && outerConeHalfAngle == 180.0f );
+		float innerCone = MIN( innerConeHalfAngle, 90.0f ) * 2.0f;
+		float outerCone = MIN( outerConeHalfAngle, 90.0f ) * 2.0f;
+		float constantAttn = GetMapEntityFloat( entData, "_constant_attn", 0.0f );
+		float linearAttn = GetMapEntityFloat( entData, "_linear_attn", 0.0f );
+		float quadraticAttn = GetMapEntityFloat( entData, "_quadratic_attn", 1.0f );
 
 		// The BSP world-light lump is VRAD's resolved representation of these
 		// entities. Prefer it for the final radius and, for spotlights, the real
@@ -198,18 +298,32 @@ void CDeferredManagerServer::LevelInitPreEntity()
 		// entities whose useful trajectory is not captured by raw angles alone.
 		const dworldlight_t *pBestWorldLight = NULL;
 		float bestDistSqr = FLT_MAX;
+		float bestMatchScore = FLT_MAX;
 		FOR_EACH_VEC( worldLights, i )
 		{
 			const dworldlight_t &worldLight = worldLights[i];
-			if ( isPoint && worldLight.type != emit_point )
-				continue;
-			if ( isSpot && worldLight.type != emit_spotlight )
+			const emittype_t expectedType = deferredPointLight ? emit_point : emit_spotlight;
+			if ( worldLight.type != expectedType )
 				continue;
 
 			const float distSqr = ( worldLight.origin - pos ).LengthSqr();
-			if ( distSqr < bestDistSqr )
+			float matchScore = distSqr;
+			if ( expectedType == emit_spotlight && hasSpotDirection )
+			{
+				Vector worldDirection = worldLight.normal;
+				if ( VectorNormalize( worldDirection ) > 0.001f )
+				{
+					// Direction breaks ties for co-located spotlights with different
+					// targets, which are common in authored Source maps.
+					matchScore += ( 1.0f - clamp( DotProduct( worldDirection, spotDirection ),
+						-1.0f, 1.0f ) ) * 16.0f;
+				}
+			}
+
+			if ( matchScore < bestMatchScore )
 			{
 				bestDistSqr = distSqr;
+				bestMatchScore = matchScore;
 				pBestWorldLight = &worldLight;
 			}
 		}
@@ -219,12 +333,19 @@ void CDeferredManagerServer::LevelInitPreEntity()
 		if ( pBestWorldLight != NULL && bestDistSqr <= 16.0f )
 		{
 			radius = ComputeMapLightRadius( *pBestWorldLight );
-			if ( isSpot )
+			constantAttn = pBestWorldLight->constant_attn;
+			linearAttn = pBestWorldLight->linear_attn;
+			quadraticAttn = pBestWorldLight->quadratic_attn;
+			deferredPointLight = pBestWorldLight->type == emit_point;
+			if ( !deferredPointLight )
 			{
-				VectorAngles( pBestWorldLight->normal, angles );
-				innerCone = RAD2DEG( acosf( clamp( pBestWorldLight->stopdot, -1.0f, 1.0f ) ) );
-				outerCone = RAD2DEG( acosf( clamp( pBestWorldLight->stopdot2, -1.0f, 1.0f ) ) );
-				exponent = pBestWorldLight->exponent;
+				spotDirection = pBestWorldLight->normal;
+				if ( VectorNormalize( spotDirection ) > 0.001f )
+					VectorAngles( spotDirection, angles );
+				// Source's _cone values are half-angles, while light_deferred's
+				// cone fields are full FOV values.
+				innerCone = RAD2DEG( acosf( clamp( pBestWorldLight->stopdot, -1.0f, 1.0f ) ) ) * 2.0f;
+				outerCone = RAD2DEG( acosf( clamp( pBestWorldLight->stopdot2, -1.0f, 1.0f ) ) ) * 2.0f;
 			}
 		}
 
@@ -237,9 +358,7 @@ void CDeferredManagerServer::LevelInitPreEntity()
 		if ( radius <= 0.0f )
 		{
 			radius = ComputeMapLightRadius( 0.0f, MAX( 1, color[3] ),
-				GetMapEntityFloat( entData, "_constant_attn", 0.0f ),
-				GetMapEntityFloat( entData, "_linear_attn", 0.0f ),
-				GetMapEntityFloat( entData, "_quadratic_attn", 1.0f ) );
+				constantAttn, linearAttn, quadraticAttn );
 		}
 
 		if ( radius <= 0.0f )
@@ -250,13 +369,26 @@ void CDeferredManagerServer::LevelInitPreEntity()
 		if ( lightEntity == NULL )
 			continue;
 
-		lightEntity->KeyValue( szParamDiffuse, lightColor );
-		lightEntity->KeyValue( "spawnflags", "11" ); // enabled + shadows + volumetrics
-		lightEntity->KeyValue( szParamLightType, isSpot ? "1" : "0" );
-		lightEntity->KeyValue( szParamPower, UTIL_VarArgs( "%g", exponent ) );
+		// Source permits HDR brightness values far above 255 because VRAD applies
+		// the authored attenuation curve. Feeding values such as 3000 directly
+		// into the deferred light buffer produces multi-screen overexposure.
+		const float scaledIntensity = MIN( MAX( 0.0f, color[3] *
+			r_deferred_autolight_intensity_scale.GetFloat() ),
+			r_deferred_autolight_intensity_max.GetFloat() * 255.0f );
+		char deferredLightColor[MAPKEY_MAXLENGTH];
+		Q_snprintf( deferredLightColor, sizeof( deferredLightColor ), "%d %d %d %.3f",
+			clamp( color[0], 0, 255 ), clamp( color[1], 0, 255 ),
+			clamp( color[2], 0, 255 ), scaledIntensity );
+
+		lightEntity->KeyValue( szParamDiffuse, deferredLightColor );
+		lightEntity->AddSpawnFlags( DEFLIGHT_ENABLED | DEFLIGHT_SHADOW_ENABLED |
+			DEFLIGHT_VOLUMETRICS_ENABLED | DEFLIGHT_AUTOCONVERTED );
+		lightEntity->KeyValue( szParamLightType, deferredPointLight ? "0" : "1" );
+		lightEntity->KeyValue( szParamPower, UTIL_VarArgs( "%g",
+			ComputeMapLightFalloffPower( linearAttn, quadraticAttn ) ) );
 		lightEntity->KeyValue( szParamRadius, UTIL_VarArgs( "%g", radius ) );
 
-		if ( isSpot )
+		if ( !deferredPointLight )
 		{
 			lightEntity->KeyValue( szParamSpotConeInner, UTIL_VarArgs( "%g", innerCone ) );
 			lightEntity->KeyValue( szParamSpotConeOuter, UTIL_VarArgs( "%g", outerCone ) );

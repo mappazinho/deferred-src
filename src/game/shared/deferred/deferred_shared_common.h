@@ -19,12 +19,15 @@ enum DEFLIGHT_FLAGS
 	DEFLIGHT_COOKIE_ENABLED =			( 1 << 2 ),
 	DEFLIGHT_VOLUMETRICS_ENABLED =		( 1 << 3 ),
 	DEFLIGHT_LIGHTSTYLE_ENABLED =		( 1 << 4 ),
+	// Internal marker used to tune automatically converted Source map lights
+	// without changing explicitly authored light_deferred entities.
+	DEFLIGHT_AUTOCONVERTED =			( 1 << 5 ),
 
 	DEFLIGHT_DIRTY_XFORMS =				( 1 << 6 ),
 	DEFLIGHT_DIRTY_RENDERMESH =			( 1 << 7 ),
 	DEFLIGHT_DIRTY_CONFIGURATION =		( 1 << 8 ),
 };
-#define DEFLIGHT_FLAGS_MAX_SHARED_BITS 5
+#define DEFLIGHT_FLAGS_MAX_SHARED_BITS 6
 
 enum DEFLIGHTGLOBAL_FLAGS
 {
@@ -93,7 +96,7 @@ void UTIL_StringToIntArray( int *pVector, int count, const char *pString );
 #define DEFLIGHTCONTAINER_MAXLIGHTS 113
 
 #define NETWORK_MASK_LIGHTTYPE	0x0001
-#define NETWORK_MASK_FLAGS		0x001F
+#define NETWORK_MASK_FLAGS		0x003F
 #define NETWORK_MASK_COOKIE		0x007F
 #define NETWORK_MASK_SEED		0xFFFF
 

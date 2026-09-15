@@ -1089,6 +1089,8 @@ void CLightingManager::RenderLights( const CViewSetup &view, CDeferredViewRender
 						data.mData.iSamplerOffset = entry.sampleroffset;
 						data.mData.iNumRows = lightTypes[i].constCount_advanced;
 						data.mData.bHasCookie = entry.pLight->HasCookie();
+						data.mData.flIntensity = ( entry.pLight->iFlags & DEFLIGHT_AUTOCONVERTED ) ?
+							r_deferred_autolight_volume_intensity.GetFloat() : 1.0f;
 #if DEFCFG_ADAPTIVE_VOLUMETRIC_LOD
 						data.mData.iLOD = iVolumeLOD;
 #endif
@@ -1271,6 +1273,8 @@ void CLightingManager::RenderLights( const CViewSetup &view, CDeferredViewRender
 				data.mData.iSamplerOffset = 0;
 				data.mData.iNumRows = lightTypes[i].constCount_advanced;
 				data.mData.bHasCookie = bCookie;
+				data.mData.flIntensity = ( l->iFlags & DEFLIGHT_AUTOCONVERTED ) ?
+					r_deferred_autolight_volume_intensity.GetFloat() : 1.0f;
 #if DEFCFG_ADAPTIVE_VOLUMETRIC_LOD
 				data.mData.iLOD = iVolumeLOD;
 #endif
@@ -1396,6 +1400,8 @@ void CLightingManager::RenderLights( const CViewSetup &view, CDeferredViewRender
 				data.mData.iSamplerOffset = 0;
 				data.mData.iNumRows = lightTypes[i].constCount_advanced;
 				data.mData.bHasCookie = bCookie;
+				data.mData.flIntensity = ( l->iFlags & DEFLIGHT_AUTOCONVERTED ) ?
+					r_deferred_autolight_volume_intensity.GetFloat() : 1.0f;
 #if DEFCFG_ADAPTIVE_VOLUMETRIC_LOD
 				data.mData.iLOD = iVolumeLOD;
 #endif

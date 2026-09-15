@@ -178,6 +178,9 @@ void DrawPassLightPassVolum( const lightPassParms &info, CBaseVSShader *pShader,
 			pExt->GetActiveLightData() + vData.iDataOffset,
 			vData.iNumRows );
 
+		const float flVolumeSettings[4] = { MAX( 0.0f, vData.flIntensity ), 0.0f, 0.0f, 0.0f };
+		pShaderAPI->SetPixelShaderConstant( 7, flVolumeSettings );
+
 		if ( bWorldProjection )
 		{
 			CommitHalfScreenTexel( pShaderAPI, 6 );
