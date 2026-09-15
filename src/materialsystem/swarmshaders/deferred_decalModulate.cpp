@@ -11,11 +11,11 @@
 #include "BaseVSShader.h"
 #include "cpp_shader_constant_register_map.h"
 
+#ifdef _X360
 #include "decalmodulate_vs20.inc"
 #include "decalmodulate_ps20.inc"
 #include "decalmodulate_ps20b.inc"
-
-#ifndef _X360
+#else
 #include "decalmodulate_vs30.inc"
 #include "decalmodulate_ps30.inc"
 #endif
@@ -108,9 +108,7 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 
 			bool bHasVertexAlpha = IS_FLAG_SET( MATERIAL_VAR_VERTEXCOLOR ) && IS_FLAG_SET( MATERIAL_VAR_VERTEXALPHA );
 
-#ifndef _X360
-			if ( !g_pHardwareConfig->HasFastVertexTextures() )
-#endif
+#ifdef _X360
 			{
 				DECLARE_STATIC_VERTEX_SHADER( decalmodulate_vs20 );
 				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  bHasVertexAlpha );
@@ -130,8 +128,10 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 					SET_STATIC_PIXEL_SHADER( decalmodulate_ps20 );
 				}
 			}
-#ifndef _X360
-			else
+#else
+			// The deferred PC renderer is built for shader model 3.0. SCell555
+			// generates the matching decalmodulate_vs30/ps30 headers when bdef
+			// invokes the shared shader build with -force30.
 			{
 				DECLARE_STATIC_VERTEX_SHADER( decalmodulate_vs30 );
 				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  bHasVertexAlpha );
@@ -201,9 +201,7 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 			fConsts[1] = params[ FOGSCALE ]->GetFloatValue();
 			pShaderAPI->SetPixelShaderConstant( 0, fConsts );
 
-#ifndef _X360
-			if ( !g_pHardwareConfig->HasFastVertexTextures() )
-#endif
+#ifdef _X360
 			{
 				DECLARE_DYNAMIC_VERTEX_SHADER( decalmodulate_vs20 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( SKINNING, 0 );
@@ -225,16 +223,21 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 					SET_DYNAMIC_PIXEL_SHADER( decalmodulate_ps20 );
 				}
 			}
-#ifndef _X360
-			else
+#else
 			{
-				SetHWMorphVertexShaderState( VERTEX_SHADER_SHADER_SPECIFIC_CONST_6, VERTEX_SHADER_SHADER_SPECIFIC_CONST_7, SHADER_VERTEXTEXTURE_SAMPLER0 );
+				const bool bFastVertexTextures = g_pHardwareConfig->HasFastVertexTextures();
+				const bool bHWMorphing = bFastVertexTextures && pShaderAPI->IsHWMorphingEnabled();
+
+				if ( bFastVertexTextures )
+				{
+					SetHWMorphVertexShaderState( VERTEX_SHADER_SHADER_SPECIFIC_CONST_6, VERTEX_SHADER_SHADER_SPECIFIC_CONST_7, SHADER_VERTEXTEXTURE_SAMPLER0 );
+				}
 
 				DECLARE_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( SKINNING, pShaderAPI->GetCurrentNumBones() > 0 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( COMPRESSED_VERTS, (int)vertexCompression );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( MORPHING, pShaderAPI->IsHWMorphingEnabled() );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( MORPHING, bHWMorphing );
 //				SET_DYNAMIC_VERTEX_SHADER_COMBO( TESSELLATION, 0 );             // JasonM TODO: set this appropriately when we care about decals on subds				
 				SET_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
 
@@ -242,8 +245,11 @@ BEGIN_VS_SHADER( DEFERRED_DECALMODULATE,
 				SET_DYNAMIC_PIXEL_SHADER_COMBO( PIXELFOGTYPE, pShaderAPI->GetSceneFogMode() == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
 				SET_DYNAMIC_PIXEL_SHADER( decalmodulate_ps30 );
 
-				bool bUnusedTexCoords[3] = { false, false, !pShaderAPI->IsHWMorphingEnabled() };
-				pShaderAPI->MarkUnusedVertexFields( 0, 3, bUnusedTexCoords );
+				if ( bFastVertexTextures )
+				{
+					bool bUnusedTexCoords[3] = { false, false, !bHWMorphing };
+					pShaderAPI->MarkUnusedVertexFields( 0, 3, bUnusedTexCoords );
+				}
 			}
 #endif
 		}
