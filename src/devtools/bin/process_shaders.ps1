@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory=$true, ValueFromPipeline=$true)][System.IO.FileInfo]$File,
+    [Parameter(Mandatory=$true, ValueFromPipeline=$true)][System.IO.FileInfo]$ShaderList,
     [Parameter(Mandatory=$true)][string]$Version,
     [Parameter(Mandatory=$false)][switch]$Dynamic,
     [Parameter(Mandatory=$false)][System.UInt32]$Threads
@@ -17,7 +17,7 @@ if (-not (Test-Path $compiler)) {
     throw "ShaderCompile.exe was not found at $compiler"
 }
 
-$fileList = $File.OpenText()
+$fileList = $ShaderList.OpenText()
 try {
     while ($null -ne ($line = $fileList.ReadLine())) {
         if ($line -match '^\s*$' -or $line -match '^\s*//') {
@@ -31,7 +31,7 @@ try {
         if ($Threads -ne 0) {
             $arguments += @("-threads", $Threads)
         }
-        $arguments += @("-ver", $Version, "-shaderpath", $File.DirectoryName, $line)
+        $arguments += @("-ver", $Version, "-shaderpath", $ShaderList.DirectoryName, $line)
 
         & $compiler @arguments
         if ($LASTEXITCODE -ne 0) {
