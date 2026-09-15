@@ -6,7 +6,7 @@ Reference: `54ac/source-sdk-vs2022-deferred` (`master`) versus this repository's
 
 The highest-impact remaining mismatch is not in the deferred lighting math or render-target layout. It is at the engine/shader ABI boundary.
 
-The C++ side of the deferred game shader was already moved to Source SDK 2013's `BaseVSShader` implementation, but the HLSL sources under `swarmshaders` were still resolving copied Alien Swarm-era versions of `common_vs_fxc.h`, `common_ps_fxc.h`, `common_fxc.h`, and the shader constant-register maps from their own directory.
+The C++ side of the deferred game shader was already moved to Source SDK 2013's `BaseVSShader` implementation, but the HLSL sources under `swarmshaders` were still resolving copied Alien Swarm-era versions of `common_vs_fxc.h`, `common_ps_fxc.h`, and `common_fxc.h` from their own directory.
 
 The 54ac SDK 2013 port keeps the deferred shader sources in `stdshaders`, so the same `#include "common_vs_fxc.h"` / `#include "common_ps_fxc.h"` statements resolve to the SDK 2013 engine-owned headers. In this repository, the directory split caused those names to resolve to stale local copies instead.
 
@@ -19,12 +19,14 @@ The following `swarmshaders` files are now compatibility shims to the repository
 - `common_fxc.h`
 - `common_vs_fxc.h`
 - `common_ps_fxc.h`
-- `cpp_shader_constant_register_map.h`
-- `shader_constant_register_map.h`
 
-This deliberately does **not** replace deferred-specific headers such as `common_deferred_fxc.h`, `common_lighting_fxc.h`, `common_shadowmapping_fxc.h`, or `deferred_global_common.h`. Those contain deferred-renderer functionality rather than the engine-owned shader ABI and should remain local unless a specific behavioral difference is being ported.
+Those three SDK 2013 targets match the corresponding 54ac files byte-for-byte in this checkout.
 
-`game_shader_deferred.vpc` also lists the compatibility shims explicitly so the project shows which shared shader headers are SDK 2013-owned versus deferred-specific.
+The local `cpp_shader_constant_register_map.h` and `shader_constant_register_map.h` were also audited. They are intentionally retained rather than redirected: the deferred copy carries additional register aliases/extensions, while the stock SDK 2013 register-map file in this repository is not byte-identical to 54ac's deferred SDK copy. Replacing those maps would broaden this fix beyond the proven ABI mismatch and could remove deferred-specific definitions.
+
+This deliberately does **not** replace deferred-specific headers such as `common_deferred_fxc.h`, `common_lighting_fxc.h`, `common_shadowmapping_fxc.h`, or `deferred_global_common.h`. Those contain deferred-renderer functionality rather than the engine-owned common VS/PS ABI and should remain local unless a specific behavioral difference is being ported.
+
+`game_shader_deferred.vpc` lists the audited shared shader headers explicitly so the project makes the SDK-owned/deferred-specific boundary visible.
 
 ## Comparison notes
 
@@ -33,6 +35,10 @@ This deliberately does **not** replace deferred-specific headers such as `common
 - The 54ac port uses SDK 2013 `BaseVSShader.cpp`; this repository now does the same.
 - The 54ac HLSL model passes resolve SDK 2013 `common_vs_fxc.h`; this repository previously did not. This audit fixes that.
 - The deferred G-buffer, composite, and shadow model passes retain this repository's newer/deferred-specific combinations such as MultiBlend instead of blindly replacing them with the 54ac versions.
+
+### Deferred configuration and algorithms
+
+The deferred-specific codebases are not identical, and those differences are not all bugs. For example, this repository carries different cascade target sizing and newer shader combinations, while 54ac carries some configuration switches not present here. The audit therefore treats 54ac as the SDK 2013 integration reference, not as a file-for-file replacement source for deferred lighting behavior.
 
 ### Material-system routing
 
