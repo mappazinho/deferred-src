@@ -30,7 +30,7 @@ const float g_flDepthScale					: register( SHADER_SPECIFIC_CONST_2 );
 
 const float3 cMorphTargetTextureDim			: register( SHADER_SPECIFIC_CONST_10 );
 const float4 cMorphSubrect					: register( SHADER_SPECIFIC_CONST_11 );
-sampler2D morphSampler						: register( D3DVERTEXTEXTURESAMPLER0, s0 );
+sampler2D morphSampler						: register( s0 );
 
 #endif
 
@@ -57,7 +57,7 @@ struct VS_INPUT
 
 	float4 vBoneWeights				: BLENDWEIGHT;
 	float4 vBoneIndices				: BLENDINDICES;
-	float4 vUserData				: TANGENT;
+	float4 vUserData					: TANGENT;
 
 	float4 vTexCoord2				: TEXCOORD2;
 	float4 vPosFlex					: POSITION1;
@@ -96,8 +96,8 @@ struct VS_OUTPUT
 	float4 worldNormal_Depth		: TEXCOORD1;
 
 #if TANGENTSPACE
-	float3 worldTangentS			: TEXCOORD2;
-	float3 worldTangentT			: TEXCOORD3;
+	float3 worldTangentS				: TEXCOORD2;
+	float3 worldTangentT				: TEXCOORD3;
 #endif
 
 #if BUMPMAP2
