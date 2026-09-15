@@ -396,13 +396,32 @@ void CLightingManager::CullLights()
 {
 	Assert( m_hRenderLights.Count() == 0 );
 
+	int culledWorld = 0;
+	int culledNoLeaves = 0;
+	int culledPVS = 0;
+	int culledBox = 0;
+	int culledSpotFrustum = 0;
+	int culledDistance = 0;
+
 	FOR_EACH_VEC_FAST( def_light_t*, m_hDeferredLights, l )
 	{
 		if ( !m_bDrawWorldLights && l->bWorldLight )
+		{
+			++culledWorld;
 			continue;
+		}
+
+		if ( l->iNumLeaves <= 0 )
+		{
+			++culledNoLeaves;
+			continue;
+		}
 
 		if ( !render->AreAnyLeavesVisible( l->iLeaveIDs, l->iNumLeaves ) )
+		{
+			++culledPVS;
 			continue;
+		}
 
 		// if the optimized bounds cause popping for you, use the naive ones or
 		// ...improve the optimization code
@@ -410,19 +429,30 @@ void CLightingManager::CullLights()
 		//	continue;
 
 		if ( engine->CullBox( l->bounds_min_naive, l->bounds_max_naive ) )
-		//if ( engine->CullBox( l->bounds_min, l->bounds_max ) )
+		{
+			++culledBox;
 			continue;
+		}
+
+		//if ( engine->CullBox( l->bounds_min, l->bounds_max ) )
+		//	continue;
 
 		if ( l->IsSpot() && l->HasShadow() )
 		{
 			if ( IntersectFrustumWithFrustum( m_matScreenToWorld, l->spotMVPInv ) )
+			{
+				++culledSpotFrustum;
 				continue;
+			}
 		}
 
 		Vector veclightDelta = l->boundsCenter - m_vecViewOrigin;
 
 		if ( veclightDelta.LengthSqr() > l->flMaxDistSqr )
+		{
+			++culledDistance;
 			continue;
+		}
 
 		l->flDistance_ViewOrigin = veclightDelta.Length();
 		l->flShadowFade = l->HasShadow() ?
@@ -432,6 +462,13 @@ void CLightingManager::CullLights()
 		m_hRenderLights.AddToTail( l );
 	}
 	FOR_EACH_VEC_FAST_END
+
+	if ( deferred_lightmanager_debug.GetBool() )
+	{
+		engine->Con_NPrintf( 24,
+			"CULL - world: %i, no leaves: %i, PVS: %i, box: %i, spot frustum: %i, distance: %i",
+			culledWorld, culledNoLeaves, culledPVS, culledBox, culledSpotFrustum, culledDistance );
+	}
 }
 
 inline fltx4 IsPointInBoundsX4( const Vector point, fltx4 boundsMin[3], fltx4 boundsMax[3] )
