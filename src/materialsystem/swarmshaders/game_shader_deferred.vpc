@@ -35,7 +35,7 @@ $Configuration
 {
 	$Compiler
 	{
-		$AdditionalIncludeDirectories "$BASE;fxctmp9;vshtmp9;$SRCDIR\dx9sdk\include"
+		$AdditionalIncludeDirectories "$BASE;include;$SRCDIR\dx9sdk\include"
 		$PreprocessorDefinitions      "$BASE;STDSHADER_DX9_DLL_EXPORT;FAST_MATERIALVAR_ACCESS;GAME_SHADER_DLL;USE_ACTUAL_DX" [$WIN32]
 	}
 
