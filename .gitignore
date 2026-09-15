@@ -81,6 +81,10 @@ src/materialsystem/swarmshaders/vcslist.txt
 src/materialsystem/swarmshaders/uniquefilestocopy.txt
 src/materialsystem/swarmshaders/makefile.*
 
+# Downloaded by src/devtools/bin/install_shadercompile.ps1.
+src/devtools/bin/ShaderCompile.exe
+src/devtools/bin/ShaderCompile.exe.download
+
 # ---------------------------------------------------------------------------
 # OSX/Linux build products
 # ---------------------------------------------------------------------------
