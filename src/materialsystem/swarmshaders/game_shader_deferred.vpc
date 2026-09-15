@@ -1,9 +1,9 @@
 //-----------------------------------------------------------------------------
 // Biohazard's deferred-lighting game shader module, ported to SDK 2013.
 //
-// SDK 2013 loads the mod shader implementation as game_shader_dx9.dll. Keep
-// the deferred sources together in this project so they use the matching
-// BaseVSShader implementation and generated deferred shader headers.
+// SDK 2013 loads the mod shader implementation as game_shader_dx9.dll. Build
+// the deferred sources against SDK 2013's stdshaders BaseVSShader, with the
+// local header providing only the deferred-specific compatibility helpers.
 //-----------------------------------------------------------------------------
 
 $Macro SRCDIR        "..\.."
@@ -49,7 +49,7 @@ $Project "Deferred Shaders"
 {
 	$Folder "Source Files"
 	{
-		$File "BaseVSShader.cpp"
+		$File "$SRCDIR\materialsystem\stdshaders\BaseVSShader.cpp"
 		$File "blur.cpp"
 		$File "debug_lightingctrl.cpp"
 		$File "debug_radiosity_grid.cpp"
