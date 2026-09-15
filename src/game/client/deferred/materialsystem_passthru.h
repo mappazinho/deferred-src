@@ -181,7 +181,7 @@ public:
 		int nFlags ) { return m_pBaseMaterialsPassThru->CreateProceduralTexture( pTextureName, pTextureGroupName, w, h, fmt, nFlags ); }
 
 	virtual void				BeginRenderTargetAllocation() { return m_pBaseMaterialsPassThru->BeginRenderTargetAllocation(); }
-	virtual void				EndRenderTargetAllocation() { return m_pBaseMaterialsPassThru->EndRenderTargetAllocation(); }
+	virtual void				EndRenderTargetAllocation() { m_pBaseMaterialsPassThru->EndRenderTargetAllocation(); }
 
 	virtual ITexture *			CreateRenderTargetTexture( int w, 
 		int h, 
@@ -261,7 +261,7 @@ public:
 	virtual void				EndUpdateLightmaps( void ) { m_pBaseMaterialsPassThru->EndUpdateLightmaps(); }
 
 	virtual MaterialLock_t		Lock() { return m_pBaseMaterialsPassThru->Lock(); }
-	virtual void				Unlock( MaterialLock_t l ) { return m_pBaseMaterialsPassThru->Unlock( l ); }
+	virtual void				Unlock( MaterialLock_t l ) { m_pBaseMaterialsPassThru->Unlock( l ); }
 	virtual ImageFormat			GetShadowDepthTextureFormat() { return m_pBaseMaterialsPassThru->GetShadowDepthTextureFormat(); }
 	virtual bool				SupportsFetch4() { return m_pBaseMaterialsPassThru->SupportsFetch4(); }
 
@@ -308,8 +308,14 @@ protected:
 class CDeferredMaterialSystem : public CPassThruMaterialSystem
 {
 public:
+	virtual IMaterial *FindMaterial( char const* pMaterialName, const char *pTextureGroupName,
+		bool complain = true, const char *pComplainPrefix = NULL );
 
-	virtual IMaterial *		FindMaterial( char const* pMaterialName, const char *pTextureGroupName, bool complain = true, const char *pComplainPrefix = NULL );
+	virtual IMaterial *FindMaterialEx( char const* pMaterialName, const char *pTextureGroupName,
+		int nContext, bool complain = true, const char *pComplainPrefix = NULL );
+
+private:
+	IMaterial *ReplaceMaterialInternal( IMaterial *pMat ) const;
 };
 
 #endif // MATERIALSYSTEM_PASSTHRU_H
