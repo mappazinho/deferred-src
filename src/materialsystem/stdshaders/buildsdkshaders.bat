@@ -3,9 +3,6 @@ setlocal
 
 rem Use dynamic shaders to build .inc files only
 rem set dynamic_shaders=1
-rem == Setup path to nmake.exe, from vc 2005 common tools directory ==
-call "%VS100COMNTOOLS%vsvars32.bat"
-
 
 set TTEXE=..\..\devtools\bin\timeprecise.exe
 if not exist %TTEXE% goto no_ttexe
@@ -15,7 +12,6 @@ goto no_ttexe_end
 set TTEXE=time /t
 :no_ttexe_end
 
-
 rem echo.
 rem echo ~~~~~~ buildsdkshaders %* ~~~~~~
 %TTEXE% -cur-Q
@@ -23,11 +19,12 @@ set tt_all_start=%ERRORLEVEL%
 set tt_all_chkpt=%tt_start%
 
 set BUILD_SHADER=call buildshaders.bat
-set ARG_EXTRA=
 
-%BUILD_SHADER% stdshader_dx9_20b		-game %GAMEDIR% -source %SOURCEDIR%
-%BUILD_SHADER% stdshader_dx9_30			-game %GAMEDIR% -source %SOURCEDIR% -force30
+%BUILD_SHADER% stdshader_dx9_20b -game %GAMEDIR% -source %SOURCEDIR%
+if errorlevel 1 goto build_failed
 
+%BUILD_SHADER% stdshader_dx9_30 -game %GAMEDIR% -source %SOURCEDIR% -force30
+if errorlevel 1 goto build_failed
 
 rem echo.
 if not "%dynamic_shaders%" == "1" (
@@ -38,3 +35,8 @@ if not "%dynamic_shaders%" == "1" (
 
 rem %TTEXE% -diff %tt_all_start% -cur
 rem echo.
+endlocal & exit /b 0
+
+:build_failed
+echo ERROR: Shader build failed.
+endlocal & exit /b 1
